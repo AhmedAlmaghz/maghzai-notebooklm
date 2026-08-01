@@ -17,6 +17,7 @@ import ThemeToggle from "@/components/theme-toggle";
 import LanguageToggle from "@/components/language-toggle";
 import AudioOverviewPlayer from "@/components/audio-overview-player";
 import { useI18n } from "@/i18n/provider";
+import { useNotebookShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 type MobileTab = "sources" | "chat" | "studio";
 
@@ -45,6 +46,9 @@ export default function NotebookWorkspace({
   // Audio Overview player state
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
 
+  // Add source dialog state
+  const [showDialog, setShowDialog] = useState(false);
+
   // Panel collapse states
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
   const [studioCollapsed, setStudioCollapsed] = useState(false);
@@ -54,6 +58,21 @@ export default function NotebookWorkspace({
   const [viewingNote, setViewingNote] = useState<NoteItem | null>(null);
 
   const selectedSourceIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+
+  // Keyboard shortcuts
+  useNotebookShortcuts({
+    onSendMessage: () => {
+      const input = document.querySelector('input[placeholder*="اسأل"]') as HTMLInputElement;
+      if (input) input.focus();
+    },
+    onNewSource: () => setShowDialog(true),
+    onToggleSources: () => setSourcesCollapsed(!sourcesCollapsed),
+    onToggleStudio: () => setStudioCollapsed(!studioCollapsed),
+    onCloseModal: () => {
+      if (viewingSource) setViewingSource(null);
+      if (viewingNote) setViewingNote(null);
+    },
+  });
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {

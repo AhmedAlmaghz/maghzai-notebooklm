@@ -8,6 +8,7 @@ import Markdown from "@/components/markdown";
 const MindmapViewer = lazy(() => import("@/components/mindmap-viewer"));
 const FlashcardsViewer = lazy(() => import("@/components/flashcards-viewer"));
 const PresentationViewer = lazy(() => import("@/components/presentation-viewer"));
+const QuizViewer = lazy(() => import("@/components/quiz-viewer"));
 
 function LoadingFallback() {
   return (
@@ -31,7 +32,7 @@ export default function NoteViewer({
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const [mode, setMode] = useState<"view" | "edit">(
-    ["mindmap", "flashcards", "presentation"].includes(note.kind) ? "view" : "edit"
+    ["mindmap", "flashcards", "presentation", "quiz", "glossary", "outline", "comparison", "debate"].includes(note.kind) ? "view" : "edit"
   );
   const [saving, setSaving] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,7 +40,7 @@ export default function NoteViewer({
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content);
-    setMode(["mindmap", "flashcards", "presentation"].includes(note.kind) ? "view" : "edit");
+    setMode(["mindmap", "flashcards", "presentation", "quiz", "glossary", "outline", "comparison", "debate"].includes(note.kind) ? "view" : "edit");
   }, [note.id, note.kind]);
 
   function scheduleSave(nextTitle: string, nextContent: string) {
@@ -75,6 +76,11 @@ export default function NoteViewer({
       case "mindmap": return "🗺️ خريطة ذهنية";
       case "flashcards": return "🎴 بطاقات تعليمية";
       case "presentation": return "📊 عرض تقديمي";
+      case "quiz": return "✅ اختبار قصير";
+      case "glossary": return "📖 مسرد المصطلحات";
+      case "outline": return "📋 مخطط مقال";
+      case "comparison": return "📊 جدول مقارنة";
+      case "debate": return "💬 نقاط مناقشة";
       case "summary": return "📝 ملخص";
       case "faq": return "❓ أسئلة شائعة";
       case "study_guide": return "📚 دليل دراسي";
@@ -117,12 +123,23 @@ export default function NoteViewer({
             <PresentationViewer content={content} />
           </Suspense>
         );
+      case "quiz":
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <QuizViewer content={content} />
+          </Suspense>
+        );
+      case "glossary":
+      case "outline":
+      case "comparison":
+      case "debate":
+        return <Markdown content={content || "*لا يوجد محتوى بعد*"} />;
       default:
         return <Markdown content={content || "*لا يوجد محتوى بعد*"} />;
     }
   };
 
-  const isInteractiveKind = ["mindmap", "flashcards", "presentation"].includes(note.kind);
+  const isInteractiveKind = ["mindmap", "flashcards", "presentation", "quiz"].includes(note.kind);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/40 backdrop-blur-sm animate-fade-in">

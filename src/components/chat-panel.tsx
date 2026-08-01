@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import type { ChatMessage, SourceItem, FollowUpSuggestion, NoteItem } from "@/lib/types";
 import Markdown from "@/components/markdown";
+import { AnimatedContainer } from "@/components/ui/animated-container";
 
 export default function ChatPanel({
   notebookId,
@@ -193,7 +194,7 @@ export default function ChatPanel({
         ) : (
           <div className="space-y-6 max-w-4xl mx-auto">
             {messages.map((m) => (
-              <div key={m.id} className="animate-fade-in">
+              <AnimatedContainer key={m.id} animation="slide" direction="up" duration={0.3}>
                 <div className={`flex ${m.role === "user" ? "justify-start" : "justify-start"}`}>
                   <div
                     className={`group relative max-w-[95%] rounded-3xl p-5 shadow-sm transition-all ${
@@ -274,16 +275,18 @@ export default function ChatPanel({
                     )}
                   </div>
                 </div>
-              </div>
+              </AnimatedContainer>
             ))}
 
             {sending && (
-              <div className="flex justify-start animate-fade-in">
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-xs font-bold text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                  <Loader2 size={18} className="animate-spin text-indigo-600" />
-                  <span>جارٍ البحث في مستنداتك وتوليد الإجابة الدقيقة...</span>
+              <AnimatedContainer animation="fade" duration={0.2}>
+                <div className="flex justify-start">
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-xs font-bold text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                    <Loader2 size={18} className="animate-spin text-indigo-600" />
+                    <span>جارٍ البحث في مستنداتك وتوليد الإجابة الدقيقة...</span>
+                  </div>
                 </div>
-              </div>
+              </AnimatedContainer>
             )}
           </div>
         )}

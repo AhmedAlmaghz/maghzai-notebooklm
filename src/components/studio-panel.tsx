@@ -18,6 +18,11 @@ const ADVANCED_ACTIONS: { kind: NoteKind; label: string; icon: React.ComponentTy
   { kind: "mindmap", label: "خريطة ذهنية", icon: Network, color: "from-purple-600 to-indigo-600" },
   { kind: "flashcards", label: "بطاقات تعليمية", icon: Layers, color: "from-emerald-600 to-teal-600" },
   { kind: "presentation", label: "عرض تقديمي", icon: Presentation, color: "from-orange-500 to-rose-600" },
+  { kind: "quiz", label: "اختبار قصير", icon: HelpCircle, color: "from-blue-600 to-cyan-600" },
+  { kind: "glossary", label: "مسرد المصطلحات", icon: FileStack, color: "from-violet-600 to-purple-600" },
+  { kind: "outline", label: "مخطط مقال", icon: Layers, color: "from-sky-600 to-blue-600" },
+  { kind: "comparison", label: "جدول مقارنة", icon: Network, color: "from-amber-600 to-orange-600" },
+  { kind: "debate", label: "نقاط مناقشة", icon: Presentation, color: "from-pink-600 to-rose-600" },
 ];
 
 const KIND_ICON: Record<NoteKind, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -170,27 +175,20 @@ export default function StudioPanel({
         {/* Advanced Interactive Tools */}
         <div>
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">أدوات تفاعلية متقدمة</p>
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             {ADVANCED_ACTIONS.map(({ kind, label, icon: Icon, color }) => (
               <button
                 key={kind}
                 onClick={() => generate(kind)}
                 disabled={generating !== null}
-                className={`flex w-full items-center gap-3.5 rounded-2xl bg-gradient-to-r ${color} p-3.5 text-white shadow-md transition hover:scale-[1.01] hover:shadow-lg disabled:opacity-50`}
+                className={`flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-r ${color} p-3.5 text-white shadow-md transition hover:scale-[1.02] hover:shadow-lg disabled:opacity-50`}
               >
                 {generating === kind ? (
                   <Loader2 size={20} className="animate-spin" />
                 ) : (
                   <Icon size={20} />
                 )}
-                <div className="text-right">
-                  <p className="text-sm font-bold">{label}</p>
-                  <p className="text-[10px] opacity-85">
-                    {kind === "mindmap" && "تصور شجري تفاعلي للمفاهيم"}
-                    {kind === "flashcards" && "بطاقات مراجعة 3D للحفظ والتقييم"}
-                    {kind === "presentation" && "شرائح عرض تقديمي بملء الشاشة"}
-                  </p>
-                </div>
+                <p className="text-xs font-bold">{label}</p>
               </button>
             ))}
           </div>

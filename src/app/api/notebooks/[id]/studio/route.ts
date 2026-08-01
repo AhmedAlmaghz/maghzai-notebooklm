@@ -7,7 +7,7 @@ import { NextRequest } from "next/server";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const VALID_KINDS: StudioKind[] = ["summary", "faq", "study_guide", "timeline", "mindmap", "flashcards", "presentation"];
+const VALID_KINDS: StudioKind[] = ["summary", "faq", "study_guide", "timeline", "mindmap", "flashcards", "presentation", "quiz", "glossary", "outline", "comparison", "debate"];
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: notebookId } = await ctx.params;
