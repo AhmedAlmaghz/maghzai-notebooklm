@@ -1,33 +1,13 @@
-import { db } from "@/db";
-import { notebooks, sources } from "@/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { createNotebook, getNotebooksForUser } from "@/lib/services/notebook-service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const user = await getCurrentUser();
-
-  const rows = await db
-    .select({
-      id: notebooks.id,
-      userId: notebooks.userId,
-      title: notebooks.title,
-      emoji: notebooks.emoji,
-      description: notebooks.description,
-      createdAt: notebooks.createdAt,
-      updatedAt: notebooks.updatedAt,
-      sourceCount: sql<number>`count(distinct ${sources.id})`.mapWith(Number),
-    })
-    .from(notebooks)
-    .leftJoin(sources, eq(sources.notebookId, notebooks.id))
-    .groupBy(notebooks.id)
-    .orderBy(desc(notebooks.updatedAt));
-
-  const filtered = rows.filter((r) => !user || !r.userId || r.userId === user.id);
-
-  return Response.json({ notebooks: filtered });
+  const notebooks = await getNotebooksForUser(user?.id ?? null);
+  return Response.json({ notebooks });
 }
 
 export async function POST(req: NextRequest) {
@@ -36,14 +16,7 @@ export async function POST(req: NextRequest) {
   const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "دفتر بحث جديد";
   const emoji = typeof body.emoji === "string" && body.emoji ? body.emoji : "📓";
 
-  const [notebook] = await db
-    .insert(notebooks)
-    .values({
-      title,
-      emoji,
-      userId: user?.id ?? null,
-    })
-    .returning();
+  const notebook = await createNotebook({ title, emoji, userId: user?.id ?? null });
 
   return Response.json({ notebook }, { status: 201 });
 }

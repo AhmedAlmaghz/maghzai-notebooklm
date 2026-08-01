@@ -29,6 +29,11 @@ const KIND_ICON: Record<NoteKind, React.ComponentType<{ size?: number; className
   mindmap: Network,
   flashcards: Layers,
   presentation: Presentation,
+  quiz: HelpCircle,
+  glossary: FileStack,
+  outline: Layers,
+  comparison: Network,
+  debate: Presentation,
 };
 
 const KIND_COLORS: Record<NoteKind, string> = {
@@ -40,6 +45,11 @@ const KIND_COLORS: Record<NoteKind, string> = {
   mindmap: "text-indigo-500 dark:text-indigo-400",
   flashcards: "text-teal-500 dark:text-teal-400",
   presentation: "text-rose-500 dark:text-rose-400",
+  quiz: "text-cyan-500 dark:text-cyan-400",
+  glossary: "text-violet-500 dark:text-violet-400",
+  outline: "text-sky-500 dark:text-sky-400",
+  comparison: "text-orange-500 dark:text-orange-400",
+  debate: "text-pink-500 dark:text-pink-400",
 };
 
 export default function StudioPanel({

@@ -37,7 +37,20 @@ export type ChatMessage = {
   createdAt: string;
 };
 
-export type NoteKind = "note" | "summary" | "faq" | "study_guide" | "timeline" | "mindmap" | "flashcards" | "presentation";
+export type NoteKind =
+  | "note"
+  | "summary"
+  | "faq"
+  | "study_guide"
+  | "timeline"
+  | "mindmap"
+  | "flashcards"
+  | "presentation"
+  | "quiz"
+  | "glossary"
+  | "outline"
+  | "comparison"
+  | "debate";
 
 export type NoteItem = {
   id: string;

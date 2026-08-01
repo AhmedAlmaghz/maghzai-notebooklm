@@ -1,17 +1,15 @@
-import { db } from "@/db";
-import { notebooks, sources } from "@/db/schema";
-import { ingestSource } from "@/lib/sources";
+import { NextRequest } from "next/server";
+import { getNotebookById } from "@/lib/services/notebook-service";
+import { getSourcesForNotebook, ingestSource } from "@/lib/services/source-service";
 import { extractTextFromHtml } from "@/lib/text/extract";
 import { extractVideoId, fetchYouTubeTranscript, formatYouTubeContent, isYouTubeUrl } from "@/lib/youtube";
-import { eq } from "drizzle-orm";
-import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const rows = await db.select().from(sources).where(eq(sources.notebookId, id)).orderBy(sources.createdAt);
+  const rows = await getSourcesForNotebook(id);
   return Response.json({ sources: rows });
 }
 
@@ -20,7 +18,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const body = await req.json().catch(() => ({}));
   const kind = body.kind as "text" | "url" | "youtube";
 
-  const [notebook] = await db.select().from(notebooks).where(eq(notebooks.id, notebookId));
+  const notebook = await getNotebookById(notebookId);
   if (!notebook) return Response.json({ error: "Notebook not found" }, { status: 404 });
 
   try {
@@ -31,29 +29,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         return Response.json({ error: "المحتوى فارغ" }, { status: 400 });
       }
       const source = await ingestSource({ notebookId, title, type: "text", content });
-      await db.update(notebooks).set({ updatedAt: new Date() }).where(eq(notebooks.id, notebookId));
       return Response.json({ source }, { status: 201 });
     }
 
     if (kind === "youtube") {
       const url = typeof body.url === "string" ? body.url.trim() : "";
       const videoId = extractVideoId(url);
-      
+
       if (!videoId) {
         return Response.json({ error: "رابط يوتيوب غير صالح" }, { status: 400 });
       }
 
       console.log(`[YouTube] Fetching transcript for video: ${videoId}`);
       const result = await fetchYouTubeTranscript(videoId);
-      
+
       if (!result || !result.transcript) {
-        return Response.json({ 
-          error: "تعذر استخراج النص من هذا الفيديو. تأكد من أن الفيديو يحتوي على ترجمة/تعليقات توضيحية." 
+        return Response.json({
+          error: "تعذر استخراج النص من هذا الفيديو. تأكد من أن الفيديو يحتوي على ترجمة/تعليقات توضيحية."
         }, { status: 400 });
       }
 
       const content = formatYouTubeContent(result.transcript, result.metadata);
-      
+
       const source = await ingestSource({
         notebookId,
         title: `🎬 ${result.metadata.title}`,
@@ -61,7 +58,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         content,
         sourceUrl: `https://www.youtube.com/watch?v=${videoId}`,
       });
-      await db.update(notebooks).set({ updatedAt: new Date() }).where(eq(notebooks.id, notebookId));
       return Response.json({ source }, { status: 201 });
     }
 
@@ -77,10 +73,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         if (videoId) {
           console.log(`[YouTube] Detected YouTube URL, fetching transcript for: ${videoId}`);
           const result = await fetchYouTubeTranscript(videoId);
-          
+
           if (result && result.transcript) {
             const content = formatYouTubeContent(result.transcript, result.metadata);
-            
+
             const source = await ingestSource({
               notebookId,
               title: `🎬 ${result.metadata.title}`,
@@ -88,7 +84,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
               content,
               sourceUrl: url,
             });
-            await db.update(notebooks).set({ updatedAt: new Date() }).where(eq(notebooks.id, notebookId));
             return Response.json({ source }, { status: 201 });
           }
         }
@@ -122,7 +117,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         content: text,
         sourceUrl: url,
       });
-      await db.update(notebooks).set({ updatedAt: new Date() }).where(eq(notebooks.id, notebookId));
       return Response.json({ source }, { status: 201 });
     }
 

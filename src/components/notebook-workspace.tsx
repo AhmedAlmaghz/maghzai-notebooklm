@@ -14,7 +14,9 @@ import StudioPanel from "@/components/studio-panel";
 import SourceViewer from "@/components/source-viewer";
 import NoteViewer from "@/components/note-viewer";
 import ThemeToggle from "@/components/theme-toggle";
+import LanguageToggle from "@/components/language-toggle";
 import AudioOverviewPlayer from "@/components/audio-overview-player";
+import { useI18n } from "@/i18n/provider";
 
 type MobileTab = "sources" | "chat" | "studio";
 
@@ -30,6 +32,7 @@ export default function NotebookWorkspace({
   initialNotes: NoteItem[];
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [title, setTitle] = useState(notebook.title);
   const [emoji, setEmoji] = useState(notebook.emoji || "📓");
   const [sources, setSources] = useState<SourceItem[]>(initialSources);
@@ -145,14 +148,15 @@ export default function NotebookWorkspace({
           </button>
 
           <ThemeToggle />
+          <LanguageToggle compact />
 
           <button
             onClick={deleteNotebook}
             className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 transition"
-            title="حذف الدفتر"
+            title={t.notebook.deleteNotebook}
           >
             <Trash2 size={15} />
-            <span className="hidden lg:inline">حذف</span>
+            <span className="hidden lg:inline">{t.notebook.deleteNotebook}</span>
           </button>
         </div>
       </header>

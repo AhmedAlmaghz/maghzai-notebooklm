@@ -1,6 +1,6 @@
 {
   "name": "MaghzAI NotebookLM",
-  "version": "v0.1.0",
+  "version": "v0.2.0",
   "author": "Ahmed Almaghz",
   "homepage": "https://maghzai-notebooklm.vercel.app",
   "repository": {
@@ -20,7 +20,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.20",
@@ -57,6 +59,7 @@
     "eslint-config-next": "16.2.6",
     "postcss": "8.5.8",
     "tailwindcss": "^4.1.17",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.10"
   }
 }

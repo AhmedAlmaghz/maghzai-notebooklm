@@ -1,7 +1,5 @@
-import { db } from "@/db";
-import { notebooks, sources } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
+import { deleteSource, getSourceById } from "@/lib/services/source-service";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +8,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string; sourceId: string }> },
 ) {
   const { id, sourceId } = await ctx.params;
-  const [source] = await db
-    .select()
-    .from(sources)
-    .where(and(eq(sources.id, sourceId), eq(sources.notebookId, id)));
+  const source = await getSourceById(id, sourceId);
   if (!source) return Response.json({ error: "Source not found" }, { status: 404 });
   return Response.json({ source });
 }
@@ -23,7 +18,6 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; sourceId: string }> },
 ) {
   const { id, sourceId } = await ctx.params;
-  await db.delete(sources).where(and(eq(sources.id, sourceId), eq(sources.notebookId, id)));
-  await db.update(notebooks).set({ updatedAt: new Date() }).where(eq(notebooks.id, id));
+  await deleteSource(id, sourceId);
   return Response.json({ ok: true });
 }

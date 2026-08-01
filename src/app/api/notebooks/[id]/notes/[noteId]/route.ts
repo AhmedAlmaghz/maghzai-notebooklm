@@ -1,7 +1,5 @@
-import { db } from "@/db";
-import { notes } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
+import { deleteNote, updateNote } from "@/lib/services/note-service";
 
 export const dynamic = "force-dynamic";
 
@@ -12,16 +10,11 @@ export async function PATCH(
   const { id, noteId } = await ctx.params;
   const body = await req.json().catch(() => ({}));
 
-  const updates: Partial<typeof notes.$inferInsert> = { updatedAt: new Date() };
+  const updates: { title?: string; content?: string; kind?: never } = {};
   if (typeof body.title === "string") updates.title = body.title;
   if (typeof body.content === "string") updates.content = body.content;
 
-  const [updated] = await db
-    .update(notes)
-    .set(updates)
-    .where(and(eq(notes.id, noteId), eq(notes.notebookId, id)))
-    .returning();
-
+  const updated = await updateNote(id, noteId, updates);
   if (!updated) return Response.json({ error: "Note not found" }, { status: 404 });
   return Response.json({ note: updated });
 }
@@ -31,6 +24,6 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; noteId: string }> },
 ) {
   const { id, noteId } = await ctx.params;
-  await db.delete(notes).where(and(eq(notes.id, noteId), eq(notes.notebookId, id)));
+  await deleteNote(id, noteId);
   return Response.json({ ok: true });
 }

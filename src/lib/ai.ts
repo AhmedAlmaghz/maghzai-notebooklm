@@ -3,7 +3,7 @@ import type { RetrievedChunk } from "@/lib/search";
 
 // Gemini API configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash-lite";
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 export function isLLMAvailable(): boolean {
@@ -322,7 +322,19 @@ async function generateFollowUpSuggestions(
   ];
 }
 
-export type StudioKind = "summary" | "faq" | "study_guide" | "timeline" | "mindmap" | "flashcards" | "presentation";
+export type StudioKind =
+  | "summary"
+  | "faq"
+  | "study_guide"
+  | "timeline"
+  | "mindmap"
+  | "flashcards"
+  | "presentation"
+  | "quiz"
+  | "glossary"
+  | "outline"
+  | "comparison"
+  | "debate";
 
 const STUDIO_TITLES: Record<StudioKind, string> = {
   summary: "ملخص شامل",
@@ -332,6 +344,11 @@ const STUDIO_TITLES: Record<StudioKind, string> = {
   mindmap: "خريطة ذهنية",
   flashcards: "بطاقات تعليمية",
   presentation: "عرض تقديمي",
+  quiz: "اختبار قصير",
+  glossary: "مسرد المصطلحات",
+  outline: "مخطط مقال",
+  comparison: "جدول مقارنة",
+  debate: "نقاط مناقشة",
 };
 
 export function studioTitle(kind: StudioKind): string {
@@ -408,6 +425,16 @@ mindmap
 5. شريحة أسئلة للنقاش
 
 استخدم نقاط قصيرة وواضحة في كل شريحة (3-5 نقاط كحد أقصى).`,
+      quiz:
+        "أنشئ اختباراً قصيراً من 8-10 أسئلة متنوعة (اختيار من متعدد، صح/خطأ، أسئلة قصيرة). استخدم:\n## ❓ السؤال\n- أ) خيار 1\n- ب) خيار 2\n- ج) خيار 3\n- د) خيار 4\n\n**الإجابة الصحيحة:** [الحرف]\n**الشرح:** [شرح موجز]",
+      glossary:
+        "أنشئ مسرداً شاملاً للمصطلحات المهمة. استخدم:\n## 📖 المصطلح\n**التعريف:** [تعريف واضح ومبسط]\n**مثال:** [مثال عملي إن أمكن]\n**العلاقة:** [كيف يرتبط بمفاهيم أخرى]",
+      outline:
+        "أنشئ مخططاً تفصيلياً لمقال أو بحث. استخدم:\n# العنوان الرئيسي\n## 1. المقدمة\n### 1.1 نقطة فرعية\n## 2. المحتوى الرئيسي\n### 2.1 نقطة فرعية\n## 3. الخاتمة\n\nاجعل المخطط هرمياً ومنظماً.",
+      comparison:
+        "أنشئ جدول مقارنة شاملاً بين المفاهيم أو العناصر الرئيسية. استخدم:\n## 📊 جدول المقارنة\n\n| المعيار | العنصر الأول | العنصر الثاني |\n|---------|-------------|-------------|\n| المعيار 1 | ... | ... |\n\nثم أضف تحليلاً نصياً لأهم الفروقات والتشابهات.",
+      debate:
+        "أنشئ نقاط مناقشة متوازنة حول الموضوع. استخدم:\n## 💬 وجهة النظر المؤيدة\n- حجة 1 مع الدليل\n- حجة 2 مع الدليل\n\n## 🤔 وجهة النظر المعارضة\n- حجة 1 مع الدليل\n- حجة 2 مع الدليل\n\n## ⚖️ الخلاصة المتوازنة\n[تحليل موضوعي]",
     };
     const system =
       "أنت معلّم متخصص في إنتاج مواد دراسية عالية الجودة. اجعل المحتوى سهل الفهم ومنظماً بشكل جميل باستخدام Markdown.";
