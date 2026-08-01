@@ -1,0 +1,13 @@
+npm notice run MaghzAI NotebookLM@v0.1.0 dev
+npm notice run next dev
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.5:3000
+- Environments: .env
+✓ Ready in 1451ms
+⚠ Slow filesystem detected. The benchmark took 424ms. If c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\.next/dev is a network drive, consider moving it to a local folder.
+See more: https://nextjs.org/docs/app/guides/local-development
+
+ GET / 200 in 2.5s (next.js: 454ms, application-code: 2.1s)
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)>
