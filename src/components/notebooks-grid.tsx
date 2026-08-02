@@ -270,7 +270,7 @@ export default function NotebooksGrid({
                     <FileText size={14} className="text-indigo-500" />
                     <span>{nb.sourceCount ?? 0} {t.home.sources}</span>
                   </div>
-                  <span>{new Date(nb.updatedAt).toLocaleDateString()}</span>
+                  <span>{new Date(nb.updatedAt).toLocaleDateString('ar-SA')}</span>
                 </div>
               </a>
             ))}

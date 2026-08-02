@@ -23,13 +23,33 @@ export function extractTextFromHtml(html: string): { title: string; text: string
 
 /** Extracts text content from a PDF file buffer. */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+  // Configure pdfjs-dist worker before importing PDFParse
   try {
-    const result = await parser.getText();
-    return (result.text || "").trim();
-  } finally {
-    await parser.destroy();
+    // Dynamically import and configure pdfjs-dist
+    const pdfjsLib = await import("pdfjs-dist");
+    
+    // Set worker source to CDN to avoid local file issues
+    if (pdfjsLib.GlobalWorkerOptions) {
+      const version = pdfjsLib.version || "4.0.379";
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`;
+    }
+  } catch (error) {
+    console.warn("[PDF] Worker setup warning (non-critical):", error);
+    // Continue anyway - pdf-parse might handle this internally
+  }
+
+  try {
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    try {
+      const result = await parser.getText();
+      return (result.text || "").trim();
+    } finally {
+      await parser.destroy();
+    }
+  } catch (error) {
+    console.error("[PDF] Failed to parse PDF:", error);
+    throw new Error("تعذر قراءة ملف PDF. تأكد من أن الملف غير تالف.");
   }
 }
 
