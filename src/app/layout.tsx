@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/i18n/provider";
 import { ToastProvider } from "@/components/ui/toast";
-import { getLocaleFromString, isRTL } from "@/i18n";
+import { defaultLocale, getLocaleFromString, isRTL } from "@/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -48,12 +48,10 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({
   children,
-  params,
 }: {
   children: ReactNode;
-  params?: Promise<{ locale?: string }>;
 }) {
-  const locale = getLocaleFromString((await params)?.locale);
+  const locale = defaultLocale;
   const dir = isRTL(locale) ? "rtl" : "ltr";
 
   return (
