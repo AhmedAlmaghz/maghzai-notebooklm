@@ -68,7 +68,14 @@ export const messages = pgTable("messages", {
   role: varchar("role", { length: 20 }).notNull(), // user | assistant
   content: text("content").notNull(),
   citations: jsonb("citations").$type<
-    { sourceId: string; sourceTitle: string; snippet: string }[]
+    {
+      id?: number;
+      kind?: "local" | "web";
+      sourceId?: string;
+      sourceTitle: string;
+      snippet: string;
+      uri?: string;
+    }[]
   >(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

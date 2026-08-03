@@ -15,11 +15,20 @@ type GeminiContent = {
   parts: { text: string }[];
 };
 
-async function callGemini(
+export type GeminiOptions = {
+  signal?: AbortSignal;
+  temperature?: number;
+  responseMimeType?: string;
+  /** When true, returns the full JSON response body (raw) instead of the extracted text. */
+  raw?: boolean;
+};
+
+export async function callGemini(
   contents: GeminiContent[],
   systemInstruction?: string,
   maxTokens = 2000,
   tools?: unknown[],
+  options?: GeminiOptions,
 ): Promise<string | null> {
   if (!GEMINI_API_KEY) {
     console.log("[Gemini] No API key configured");
@@ -30,10 +39,17 @@ async function callGemini(
     const body: Record<string, unknown> = {
       contents,
       generationConfig: {
-        temperature: 0.7,
+        temperature: options?.temperature ?? 0.7,
         maxOutputTokens: maxTokens,
       },
     };
+
+    if (options?.responseMimeType) {
+      body.generationConfig = {
+        ...(body.generationConfig as Record<string, unknown>),
+        responseMimeType: options.responseMimeType,
+      };
+    }
 
     if (systemInstruction) {
       body.systemInstruction = {
@@ -52,24 +68,30 @@ async function callGemini(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: options?.signal,
     });
 
     const responseText = await res.text();
-    
+
     if (!res.ok) {
       console.error(`[Gemini] API error ${res.status}:`, responseText);
       return null;
     }
 
     const data = JSON.parse(responseText);
-    
+
     if (data.promptFeedback?.blockReason) {
       console.error("[Gemini] Content blocked:", data.promptFeedback.blockReason);
       return null;
     }
 
+    if (options?.raw) {
+      console.log("[Gemini] Raw response received");
+      return JSON.stringify(data);
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    
+
     if (!text) {
       console.error("[Gemini] No text in response:", JSON.stringify(data).slice(0, 500));
       return null;
@@ -109,7 +131,7 @@ const EDUCATIONAL_SYSTEM_PROMPT = `أنت معلّم ومساعد بحثي مت�
 ## تنسيق الإجابة:
 - استخدم Markdown بشكل فعّال (عناوين، نقاط، **تأكيد**، \`مصطلحات\`)
 - اجعل الإجابة شاملة ومفصّلة (3-5 فقرات على الأقل)
-- إذا كان هناك معادلات رياضية استخدم $...$ أو $$...$$
+- **مهم جداً — المعادلات الرياضية:** استخدم $...$ أو $$...$$ فقط للمعادلات الحقيقية ذات الرموز الرياضية (أرقام لاتينية، متغيرات، عوامل مثل + - × ÷ = √ ∫، أو أوامر لاتيك مثل \frac و \sum). لا تضع أبداً نصاً عربياً أو كلمات داخل $...$ أو $$...$$ — إذا أردت إظهار نص عادي فلا تستخدم رمز الدولار إطلاقاً
 - اختم بـ "💡 **خلاصة**" تلخص أهم النقاط
 
 أجب بنفس لغة السؤال. إن لم تجد المعلومة في المصادر، صرّح بذلك واقترح ما يمكن للمستخدم فعله.`;
@@ -158,14 +180,14 @@ export async function answerQuestion(
       EDUCATIONAL_SYSTEM_PROMPT,
       2500,
     );
-    
+
     if (result) {
       // Generate follow-up suggestions
       const followUps = await generateFollowUpSuggestions(question, result, chunks);
-      
-      return { 
-        answer: result, 
-        citations: citationSources.slice(0, 6), 
+
+      return {
+        answer: result,
+        citations: citationSources.slice(0, 6),
         followUps,
         usedAI: true,
       };
@@ -177,20 +199,20 @@ export async function answerQuestion(
   const combinedText = chunks.map((c) => c.content).join(" ");
   const relevantSentences = extractKeySentences(combinedText, 6);
   const keywords = topKeywords(combinedText, 5);
-  
+
   const answerBody = relevantSentences.length
     ? `## الإجابة من المصادر\n\n` +
-      relevantSentences.map((s, i) => `- ${s.trim()} [${(i % citationSources.length) + 1}]`).join("\n") +
-      `\n\n**الكلمات المفتاحية:** ${keywords.join("، ")}`
+    relevantSentences.map((s, i) => `- ${s.trim()} [${(i % citationSources.length) + 1}]`).join("\n") +
+    `\n\n**الكلمات المفتاحية:** ${keywords.join("، ")}`
     : chunks[0].content.slice(0, 500);
 
   const answer =
     `${answerBody}\n\n---\n\n` +
     `💡 _تم إنشاء هذه الإجابة تلقائياً عبر التحليل النصي. لإجابات تعليمية أعمق، تأكد من تفعيل GEMINI_API_KEY._`;
 
-  return { 
-    answer, 
-    citations: citationSources.slice(0, 6), 
+  return {
+    answer,
+    citations: citationSources.slice(0, 6),
     followUps: [
       { text: "اشرح هذا بتفصيل أكثر", type: "expand" },
       { text: `ما علاقة ${keywords[0] || "هذا"} بالموضوع؟`, type: "related" },
@@ -253,7 +275,7 @@ ${previousAnswer.slice(0, 2000)}
     }
   } catch (err) {
     console.error("[AI] Web search expansion error:", err);
-    
+
     // Fallback: try without search tool
     try {
       const result = await callGemini(
@@ -437,7 +459,7 @@ mindmap
         "أنشئ نقاط مناقشة متوازنة ومحايدة حول الموضوع. استخدم:\n\n## 💬 وجهة النظر المؤيدة\n### الحجة الأولى\n- **الدليل:** ...\n- **المثال:** ...\n- **التأثير:** ...\n\n### الحجة الثانية\n- **الدليل:** ...\n- **المثال:** ...\n\n## 🤔 وجهة النظر المعارضة\n### الحجة الأولى\n- **الدليل:** ...\n- **المثال:** ...\n\n### الحجة الثانية\n- **الدليل:** ...\n- **المثال:** ...\n\n## ⚖️ الخلاصة المتوازنة\n[تحليل موضوعي يوضح متى يُفضل كل وجهة نظر]",
     };
     const system =
-      "أنت معلّم متخصص في إنتاج مواد دراسية عالية الجودة. اجعل المحتوى سهل الفهم ومنظماً بشكل جميل باستخدام Markdown.";
+      "أنت معلّم متخصص في إنتاج مواد دراسية عالية الجودة. اجعل المحتوى سهل الفهم ومنظماً بشكل جميل باستخدام Markdown. لا تستخدم أبداً رمزي $ أو $$ في المحتوى؛ اكتب أي نصوص أو معادلات بنص عادي أو Markdown، لأن رموز $ تسبب أخطاء عرض في النظام.";
 
     const result = await callGemini(
       [{ role: "user", parts: [{ text: `${instructions[kind]}\n\nالمصادر:\n\n${fullContext}` }] }],

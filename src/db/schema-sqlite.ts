@@ -64,7 +64,16 @@ export const messages = sqliteTable("messages", {
     .references(() => notebooks.id, { onDelete: "cascade" }),
   role: text("role").notNull(), // user | assistant
   content: text("content").notNull(),
-  citations: text("citations"), // JSON stringified array of citations
+  citations: text("citations", { mode: "json" }).$type<
+    {
+      id?: number;
+      kind?: "local" | "web";
+      sourceId?: string;
+      sourceTitle: string;
+      snippet: string;
+      uri?: string;
+    }[]
+  >(), // JSON stringified array of citations
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
 

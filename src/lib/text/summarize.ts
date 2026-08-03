@@ -4,14 +4,14 @@
  * so the product remains fully functional out of the box.
  */
 
-const ARABIC_STOPWORDS = new Set([
+export const ARABIC_STOPWORDS = new Set([
   "من", "الى", "إلى", "على", "في", "عن", "مع", "هذا", "هذه", "ذلك", "تلك",
   "التي", "الذي", "الذين", "و", "أو", "او", "ثم", "قد", "كان", "كانت", "يكون",
   "لم", "لن", "لا", "ما", "كل", "بعض", "غير", "بين", "حتى", "إذا", "اذا",
   "هو", "هي", "هم", "أن", "ان", "إن", "كما", "فى", "له", "لها", "لهم",
 ]);
 
-const ENGLISH_STOPWORDS = new Set([
+export const ENGLISH_STOPWORDS = new Set([
   "the", "a", "an", "and", "or", "but", "if", "then", "of", "to", "in", "on",
   "for", "with", "as", "by", "is", "are", "was", "were", "be", "been", "being",
   "this", "that", "these", "those", "it", "its", "at", "from", "into", "than",

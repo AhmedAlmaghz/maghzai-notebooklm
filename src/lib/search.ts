@@ -90,3 +90,26 @@ export async function fallbackChunks(
     rank: 0,
   }));
 }
+
+// ---- Deep Search over Sources (facade re-exports) ---------------------------
+export type {
+  Aspect,
+  CoverageReport,
+  DeepCitation,
+  DeepSearchRequest,
+  DeepSearchResult,
+  EvidenceItem,
+  LocalHit,
+  MergedChunk,
+  ResearchCorpus,
+  SubQuery,
+  WebSearchResult,
+} from "@/lib/search/types";
+export type { DeepSearchEvent, DeepSearchStage } from "@/lib/search/events";
+export type {
+  DeepSearchRunParams,
+} from "@/lib/search/deep-search";
+export {
+  DEFAULT_OPTIONS as DEEP_SEARCH_DEFAULT_OPTIONS,
+  runDeepSearch,
+} from "@/lib/search/deep-search";

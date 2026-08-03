@@ -26,6 +26,10 @@ export type Citation = {
   sourceId: string;
   sourceTitle: string;
   snippet: string;
+  /** Deep-search citation kind — local source or web URL (optional, additive). */
+  kind?: "local" | "web";
+  /** Web URL for web citations (optional, additive). */
+  uri?: string;
 };
 
 export type ChatMessage = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef, useMemo } from "react";
 
 interface KeyboardShortcut {
   key: string;
@@ -69,43 +69,73 @@ export function useNotebookShortcuts(options: {
   onCloseModal?: () => void;
   enabled?: boolean;
 }) {
-  const shortcuts: KeyboardShortcut[] = [
-    {
-      key: "Enter",
-      ctrlKey: true,
-      action: options.onSendMessage || (() => {}),
-      description: "إرسال السؤال",
-    },
-    {
-      key: "n",
-      ctrlKey: true,
-      action: options.onNewSource || (() => {}),
-      description: "مصدر جديد",
-    },
-    {
-      key: "s",
-      ctrlKey: true,
-      action: options.onToggleSources || (() => {}),
-      description: "تبديل لوحة المصادر",
-    },
-    {
-      key: "t",
-      ctrlKey: true,
-      action: options.onToggleStudio || (() => {}),
-      description: "تبديل لوحة الاستوديو",
-    },
-    {
-      key: "k",
-      ctrlKey: true,
-      action: options.onSearch || (() => {}),
-      description: "بحث سريع",
-    },
-    {
-      key: "Escape",
-      action: options.onCloseModal || (() => {}),
-      description: "إغلاق النافذة",
-    },
-  ];
+  // Keep actions in a ref so the listener is registered/stabilized only once.
+  // Re-creating the `shortcuts` array and re-binding the keydown listener on
+  // every render (every keystroke in the chat input) added noticeable jank.
+  const actionsRef = useRef({
+    onSendMessage: options.onSendMessage,
+    onNewSource: options.onNewSource,
+    onToggleSources: options.onToggleSources,
+    onToggleStudio: options.onToggleStudio,
+    onSearch: options.onSearch,
+    onCloseModal: options.onCloseModal,
+    enabled: options.enabled,
+  });
 
-  useKeyboardShortcuts({ shortcuts, enabled: options.enabled });
+  useEffect(() => {
+    actionsRef.current = {
+      onSendMessage: options.onSendMessage,
+      onNewSource: options.onNewSource,
+      onToggleSources: options.onToggleSources,
+      onToggleStudio: options.onToggleStudio,
+      onSearch: options.onSearch,
+      onCloseModal: options.onCloseModal,
+      enabled: options.enabled,
+    };
+  }, [options]);
+
+  // Memoize the shortcuts array (stable references) so `useKeyboardShortcuts`
+  // keeps the same `handleKeyDown` and the keydown listener is bound once.
+  const shortcuts = useMemo<KeyboardShortcut[]>(
+    () => [
+      {
+        key: "Enter",
+        ctrlKey: true,
+        action: () => actionsRef.current.onSendMessage?.(),
+        description: "إرسال السؤال",
+      },
+      {
+        key: "n",
+        ctrlKey: true,
+        action: () => actionsRef.current.onNewSource?.(),
+        description: "مصدر جديد",
+      },
+      {
+        key: "s",
+        ctrlKey: true,
+        action: () => actionsRef.current.onToggleSources?.(),
+        description: "تبديل لوحة المصادر",
+      },
+      {
+        key: "t",
+        ctrlKey: true,
+        action: () => actionsRef.current.onToggleStudio?.(),
+        description: "تبديل لوحة الاستوديو",
+      },
+      {
+        key: "k",
+        ctrlKey: true,
+        action: () => actionsRef.current.onSearch?.(),
+        description: "بحث سريع",
+      },
+      {
+        key: "Escape",
+        action: () => actionsRef.current.onCloseModal?.(),
+        description: "إغلاق النافذة",
+      },
+    ],
+    []
+  );
+
+  useKeyboardShortcuts({ shortcuts, enabled: actionsRef.current.enabled ?? true });
 }
