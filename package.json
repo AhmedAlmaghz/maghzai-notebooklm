@@ -28,6 +28,7 @@
     "@tailwindcss/typography": "^0.5.20",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^13.0.2",
     "cheerio": "^1.2.0",

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/i18n/provider";
 import { ToastProvider } from "@/components/ui/toast";
@@ -66,6 +67,7 @@ export default async function RootLayout({
             <ToastProvider>{children}</ToastProvider>
           </I18nProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
