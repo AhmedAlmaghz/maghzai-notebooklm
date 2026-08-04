@@ -199,7 +199,12 @@ const ar = {
     sourcesOnlyModeHint: "الإجابة تُبنى من المصادر المحددة فقط",
     expandedMode: "الوضع الموسع",
     expandedModeHint: "توسيع الإجابة من الذاكرة والويب",
+    modeToggleHint: "تبديل وضع الإجابة: من المصادر فقط أو الوضع الموسع",
     expandedModeHelper: "سيبدأ النموذج من مصادرك المحددة، لكنه قد يستخدم معرفته العامة أو يبحث في الويب لتقديم إجابة أعمق وأكثر تفصيلاً (مثل أمثلة محلولة إضافية).",
+    messagesCountLabel: "عدد المحادثات",
+    messagesDropdownHint: "أسئلتك — اضغط للانتقال إلى السؤال",
+    suggestionsLabel: "أسئلة مقترحة",
+    noQuestionsYet: "لا توجد أسئلة بعد",
   },
   studio: {
     title: "استوديو التعلم وصناع الأفكار",

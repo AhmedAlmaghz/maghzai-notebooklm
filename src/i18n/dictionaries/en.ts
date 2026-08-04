@@ -199,7 +199,12 @@ const en = {
     sourcesOnlyModeHint: "Answer is built from the selected sources only",
     expandedMode: "Expanded mode",
     expandedModeHint: "Expand the answer from memory and the web",
+    modeToggleHint: "Toggle answer mode: sources only or expanded mode",
     expandedModeHelper: "The model will start from your selected sources, but may use its general knowledge or search the web to provide a deeper, more detailed answer (e.g. additional solved examples).",
+    messagesCountLabel: "Conversations",
+    messagesDropdownHint: "Your questions — click to jump to a question",
+    suggestionsLabel: "Suggested questions",
+    noQuestionsYet: "No questions yet",
   },
   studio: {
     title: "Learning Studio & Idea Factory",
