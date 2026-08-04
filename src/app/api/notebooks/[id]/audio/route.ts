@@ -20,6 +20,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const language = typeof body.language === "string" ? body.language : "ar-SA";
   const speed = typeof body.speed === "number" ? body.speed : 1.0;
   const provider = body.provider as TTSOptions["provider"] | undefined;
+  const sourceIds: string[] | undefined = Array.isArray(body.sourceIds) && body.sourceIds.length > 0
+    ? body.sourceIds
+    : undefined;
 
   if (!text) {
     return Response.json({ error: "النص مطلوب لتوليد الصوت" }, { status: 400 });
@@ -29,17 +32,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   let contentToSpeak = text;
   if (!text) {
     const notebookSources = await db
-      .select({ title: sources.title, content: sources.content })
+      .select({ id: sources.id, title: sources.title, content: sources.content })
       .from(sources)
       .where(eq(sources.notebookId, notebookId))
       .limit(5);
 
-    if (notebookSources.length === 0) {
+    // Use only the selected sources when provided; otherwise use all.
+    const selectedSet = sourceIds && sourceIds.length > 0 ? new Set(sourceIds) : null;
+    const filteredSources = selectedSet
+      ? notebookSources.filter((s) => selectedSet.has(s.id))
+      : notebookSources;
+
+    if (filteredSources.length === 0) {
       return Response.json({ error: "لا توجد مصادر في هذا الدفتر" }, { status: 400 });
     }
 
     // Generate a summary from sources
-    contentToSpeak = notebookSources
+    contentToSpeak = filteredSources
       .map((s) => `${s.title}. ${s.content.slice(0, 500)}`)
       .join(". ")
       .slice(0, 5000);
@@ -79,7 +88,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   // Get notebook sources for audio summary
   const notebookSources = await db
-    .select({ title: sources.title, content: sources.content })
+    .select({ id: sources.id, title: sources.title, content: sources.content })
     .from(sources)
     .where(eq(sources.notebookId, notebookId))
     .limit(10);

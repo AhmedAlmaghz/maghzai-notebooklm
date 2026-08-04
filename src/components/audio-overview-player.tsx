@@ -6,10 +6,12 @@ import { Play, Pause, Volume2, VolumeX, RotateCcw, Sparkles, X, Download, Share2
 export default function AudioOverviewPlayer({
   title = "الحوار الصوتي التلخيصي للدفتر",
   notebookId,
+  selectedSourceIds,
   onClose,
 }: {
   title?: string;
   notebookId?: string;
+  selectedSourceIds?: string[];
   onClose?: () => void;
 }) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -28,7 +30,7 @@ export default function AudioOverviewPlayer({
   // Load audio on mount
   useEffect(() => {
     if (!notebookId) return;
-    
+
     const loadAudio = async () => {
       setIsLoading(true);
       try {
@@ -36,9 +38,9 @@ export default function AudioOverviewPlayer({
         const res = await fetch(`/api/notebooks/${notebookId}/audio`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ speed }),
+          body: JSON.stringify({ speed, sourceIds: selectedSourceIds }),
         });
-        
+
         if (res.ok) {
           const data = await res.json();
           if (data.audioUrl && data.audioUrl !== "browser-tts") {
@@ -70,7 +72,7 @@ export default function AudioOverviewPlayer({
     };
 
     loadAudio();
-  }, [notebookId, speed]);
+  }, [notebookId, speed, selectedSourceIds]);
 
   // Handle audio playback
   useEffect(() => {
@@ -87,7 +89,7 @@ export default function AudioOverviewPlayer({
     if (useBrowserTTS && "speechSynthesis" in window) {
       // Browser TTS
       window.speechSynthesis.cancel();
-      
+
       const utterance = new SpeechSynthesisUtterance(title);
       utterance.lang = "ar-SA";
       utterance.rate = speed;
@@ -124,9 +126,9 @@ export default function AudioOverviewPlayer({
       // Audio file playback
       audioRef.current.src = audioUrl;
       audioRef.current.play();
-      
+
       const audio = audioRef.current;
-      
+
       const updateProgress = () => {
         if (audio.duration) {
           setProgress(audio.currentTime);
@@ -163,7 +165,7 @@ export default function AudioOverviewPlayer({
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = Number(e.target.value);
     setProgress(newTime);
-    
+
     if (audioRef.current && audioUrl && !useBrowserTTS) {
       audioRef.current.currentTime = newTime;
     }
@@ -237,11 +239,10 @@ export default function AudioOverviewPlayer({
                 return (
                   <div
                     key={i}
-                    className={`w-1 rounded-full transition-all duration-300 ${
-                      (i / 32) * duration <= progress
+                    className={`w-1 rounded-full transition-all duration-300 ${(i / 32) * duration <= progress
                         ? "bg-gradient-to-t from-indigo-400 to-purple-300"
                         : "bg-indigo-900/60"
-                    }`}
+                      }`}
                     style={{
                       height: `${heightPct}%`,
                       animation: isActive ? `wave 1.2s ease-in-out infinite ${i * 0.05}s` : "none",

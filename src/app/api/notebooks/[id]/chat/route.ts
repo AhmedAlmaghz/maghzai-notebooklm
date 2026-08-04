@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   let chunks = await searchChunks(notebookId, question, 10, sourceIds);
   if (chunks.length === 0) {
-    chunks = await fallbackChunks(notebookId, 8);
+    chunks = await fallbackChunks(notebookId, 8, sourceIds);
   }
 
   const result = await answerQuestion(question, chunks);

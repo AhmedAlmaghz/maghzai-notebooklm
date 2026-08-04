@@ -18,21 +18,32 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const body = await req.json().catch(() => ({}));
   const kind = body.kind as StudioKind;
+  const sourceIds: string[] | undefined = Array.isArray(body.sourceIds) && body.sourceIds.length > 0
+    ? body.sourceIds
+    : undefined;
 
   if (!VALID_KINDS.includes(kind)) {
     return Response.json({ error: "نوع غير مدعوم" }, { status: 400 });
   }
 
   const availableSources = await db
-    .select({ title: sources.title, content: sources.content })
+    .select({ id: sources.id, title: sources.title, content: sources.content })
     .from(sources)
     .where(eq(sources.notebookId, notebookId));
 
-  if (availableSources.length === 0) {
+  // Use only the selected sources when provided; otherwise use all sources.
+  const selectedSet = sourceIds && sourceIds.length > 0 ? new Set(sourceIds) : null;
+  const filteredSources = selectedSet
+    ? availableSources.filter((s) => selectedSet.has(s.id))
+    : availableSources;
+
+  if (filteredSources.length === 0) {
     return Response.json({ error: "أضف مصدراً واحداً على الأقل أولاً" }, { status: 400 });
   }
 
-  const { content, usedAI } = await generateStudioArtifact(kind, availableSources);
+  const artifactSources = filteredSources.map(({ title, content }) => ({ title, content }));
+
+  const { content, usedAI } = await generateStudioArtifact(kind, artifactSources);
 
   const [note] = await db
     .insert(notes)

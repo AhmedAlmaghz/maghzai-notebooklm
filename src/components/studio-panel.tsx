@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { 
+import {
   FileStack, HelpCircle, GraduationCap, Clock3, Loader2, StickyNote, Plus, Trash2,
   Network, Layers, Presentation, Sparkles, Headphones
 } from "lucide-react";
-import type { NoteItem, NoteKind } from "@/lib/types";
+import type { NoteItem, NoteKind, SourceItem } from "@/lib/types";
 
 const BASIC_ACTIONS: { kind: NoteKind; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
   { kind: "summary", label: "ملخص شامل", icon: FileStack },
@@ -61,17 +61,20 @@ export default function StudioPanel({
   notebookId,
   notes,
   setNotes,
-  hasSources,
+  sources,
+  selectedSourceIds,
   onOpenNote,
   onTriggerAudioPlayer,
 }: {
   notebookId: string;
   notes: NoteItem[];
   setNotes: React.Dispatch<React.SetStateAction<NoteItem[]>>;
-  hasSources: boolean;
+  sources: SourceItem[];
+  selectedSourceIds: string[];
   onOpenNote: (note: NoteItem) => void;
   onTriggerAudioPlayer?: () => void;
 }) {
+  const hasSources = sources.length > 0;
   const [generating, setGenerating] = useState<NoteKind | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,13 +83,17 @@ export default function StudioPanel({
       setError("أضف مصدراً واحداً على الأقل أولاً لإنشاء المحتوى");
       return;
     }
+    if (selectedSourceIds.length === 0) {
+      setError("حدّد مصدراً واحداً على الأقل لإنشاء المحتوى");
+      return;
+    }
     setError(null);
     setGenerating(kind);
     try {
       const res = await fetch(`/api/notebooks/${notebookId}/studio`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind }),
+        body: JSON.stringify({ kind, sourceIds: selectedSourceIds }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "فشل التوليد");

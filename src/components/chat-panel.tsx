@@ -45,12 +45,17 @@ export default function ChatPanel({
 
   useEffect(() => {
     if (sources.length > 0 && messages.length === 0) {
-      fetch(`/api/notebooks/${notebookId}/suggestions`)
+      const params = new URLSearchParams();
+      if (selectedSourceIds.length > 0) {
+        params.set("sourceIds", selectedSourceIds.join(","));
+      }
+      const qs = params.toString();
+      fetch(`/api/notebooks/${notebookId}/suggestions${qs ? `?${qs}` : ""}`)
         .then((r) => r.json())
         .then((d) => setSuggestions(d.questions || []))
         .catch(() => {});
     }
-  }, [sources.length, messages.length, notebookId]);
+  }, [sources.length, messages.length, notebookId, selectedSourceIds]);
 
   async function send(question: string) {
     if (!question.trim() || sending) return;
@@ -103,10 +108,11 @@ export default function ChatPanel({
       const res = await fetch(`/api/notebooks/${notebookId}/chat/expand`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          question: lastQuestion, 
+        body: JSON.stringify({
+          question: lastQuestion,
           previousAnswer,
           messageId,
+          sourceIds: selectedSourceIds,
         }),
       });
       const data = await res.json();

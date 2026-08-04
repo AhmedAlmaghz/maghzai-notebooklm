@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  ArrowRight, FileStack, MessageCircle, Sparkles, Trash2, 
-  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, 
+import {
+  ArrowRight, FileStack, MessageCircle, Sparkles, Trash2,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
   Headphones, Check, BookOpen
 } from "lucide-react";
 import type { ChatMessage, Notebook, NoteItem, SourceItem } from "@/lib/types";
@@ -39,7 +39,11 @@ export default function NotebookWorkspace({
   const [sources, setSources] = useState<SourceItem[]>(initialSources);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // By default ALL sources are selected/used in chat & studio.
+  // The user can toggle specific sources off; only selected ones are used.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(initialSources.map((s) => s.id)),
+  );
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
   const [savedTitleState, setSavedTitleState] = useState(false);
 
@@ -58,6 +62,21 @@ export default function NotebookWorkspace({
   const [viewingNote, setViewingNote] = useState<NoteItem | null>(null);
 
   const selectedSourceIds = useMemo(() => Array.from(selectedIds), [selectedIds]);
+
+  // Keep selection in sync: any newly added source is automatically selected.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const s of sources) {
+        if (!next.has(s.id)) {
+          next.add(s.id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [sources]);
 
   // Keyboard shortcuts
   useNotebookShortcuts({
@@ -81,6 +100,14 @@ export default function NotebookWorkspace({
       else next.add(id);
       return next;
     });
+  }
+
+  function selectAll() {
+    setSelectedIds(new Set(sources.map((s) => s.id)));
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
   }
 
   async function openSource(source: SourceItem) {
@@ -156,11 +183,10 @@ export default function NotebookWorkspace({
           {/* Audio Overview Podcast Button */}
           <button
             onClick={() => setShowAudioPlayer(!showAudioPlayer)}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-sm ${
-              showAudioPlayer
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-sm ${showAudioPlayer
                 ? "bg-indigo-600 text-white shadow-indigo-600/30"
                 : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:text-indigo-300 dark:hover:bg-indigo-900"
-            }`}
+              }`}
           >
             <Headphones size={15} />
             <span className="hidden sm:inline">حوار صوتي</span>
@@ -186,6 +212,8 @@ export default function NotebookWorkspace({
           <div className="mx-auto max-w-4xl">
             <AudioOverviewPlayer
               title={`حوار صوتي تلخيصي: ${title}`}
+              notebookId={notebook.id}
+              selectedSourceIds={selectedSourceIds}
               onClose={() => setShowAudioPlayer(false)}
             />
           </div>
@@ -202,11 +230,10 @@ export default function NotebookWorkspace({
           <button
             key={key}
             onClick={() => setMobileTab(key)}
-            className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-xs font-bold transition ${
-              mobileTab === key
+            className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-xs font-bold transition ${mobileTab === key
                 ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
                 : "border-transparent text-slate-400 dark:text-slate-500"
-            }`}
+              }`}
           >
             <Icon size={15} /> {label}
           </button>
@@ -247,6 +274,8 @@ export default function NotebookWorkspace({
                 setSources={setSources}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
+                onSelectAll={selectAll}
+                onClearSelection={clearSelection}
                 onViewSource={openSource}
               />
             </>
@@ -296,7 +325,8 @@ export default function NotebookWorkspace({
                 notebookId={notebook.id}
                 notes={notes}
                 setNotes={setNotes}
-                hasSources={sources.length > 0}
+                sources={sources}
+                selectedSourceIds={selectedSourceIds}
                 onOpenNote={setViewingNote}
                 onTriggerAudioPlayer={() => setShowAudioPlayer(true)}
               />
@@ -314,6 +344,8 @@ export default function NotebookWorkspace({
             setSources={setSources}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
+            onSelectAll={selectAll}
+            onClearSelection={clearSelection}
             onViewSource={openSource}
           />
         </div>
@@ -333,7 +365,8 @@ export default function NotebookWorkspace({
             notebookId={notebook.id}
             notes={notes}
             setNotes={setNotes}
-            hasSources={sources.length > 0}
+            sources={sources}
+            selectedSourceIds={selectedSourceIds}
             onOpenNote={setViewingNote}
             onTriggerAudioPlayer={() => setShowAudioPlayer(true)}
           />

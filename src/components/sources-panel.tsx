@@ -26,6 +26,8 @@ export default function SourcesPanel({
   setSources,
   selectedIds,
   onToggleSelect,
+  onSelectAll,
+  onClearSelection,
   onViewSource,
 }: {
   notebookId: string;
@@ -33,6 +35,8 @@ export default function SourcesPanel({
   setSources: React.Dispatch<React.SetStateAction<SourceItem[]>>;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
   onViewSource: (source: SourceItem) => void;
 }) {
   const [showDialog, setShowDialog] = useState(false);
@@ -52,13 +56,9 @@ export default function SourcesPanel({
 
   function toggleSelectAll() {
     if (allSelected) {
-      sources.forEach((s) => {
-        if (selectedIds.has(s.id)) onToggleSelect(s.id);
-      });
+      onClearSelection();
     } else {
-      sources.forEach((s) => {
-        if (!selectedIds.has(s.id)) onToggleSelect(s.id);
-      });
+      onSelectAll();
     }
   }
 
@@ -153,8 +153,8 @@ export default function SourcesPanel({
                   <div
                     onClick={() => onViewSource(source)}
                     className={`group flex cursor-pointer items-start gap-2.5 rounded-2xl p-2.5 transition border ${selected
-                        ? "border-indigo-200 bg-indigo-50/60 dark:border-indigo-900/60 dark:bg-indigo-950/30"
-                        : "border-slate-100 bg-slate-50/50 hover:bg-slate-100 dark:border-slate-800/50 dark:bg-slate-900/50 dark:hover:bg-slate-800/80"
+                      ? "border-indigo-200 bg-indigo-50/60 dark:border-indigo-900/60 dark:bg-indigo-950/30"
+                      : "border-slate-100 bg-slate-50/50 hover:bg-slate-100 dark:border-slate-800/50 dark:bg-slate-900/50 dark:hover:bg-slate-800/80"
                       }`}
                   >
                     <button
@@ -214,8 +214,8 @@ export default function SourcesPanel({
       {sources.length > 0 && (
         <div className="border-t border-slate-200 px-4 py-2.5 text-[11px] font-medium text-slate-500 dark:border-slate-800 dark:text-slate-400">
           {selectedIds.size > 0
-            ? `📌 ${selectedIds.size} مصدر محدد للدردشة`
-            : "💡 لم يتم تحديد مصادر — سيتم البحث في كل المصادر"}
+            ? `📌 ${selectedIds.size} من ${sources.length} مصدر محدد للدردشة والاستوديو`
+            : "💡 لم يتم تحديد مصادر — سيتم استخدام كل المصادر"}
         </div>
       )}
 

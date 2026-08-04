@@ -114,13 +114,17 @@ export async function searchChunks(
 export async function fallbackChunks(
   notebookId: string,
   limit = 6,
+  sourceIds?: string[],
 ): Promise<RetrievedChunk[]> {
+  const sourceFilter = buildSourceFilter(sourceIds);
+
   if (IS_POSTGRES) {
     const result = await db.execute<ChunkRow>(sql`
       SELECT DISTINCT ON (sc.source_id) sc.id, sc.source_id, sc.content, s.title
       FROM source_chunks sc
       JOIN sources s ON s.id = sc.source_id
       WHERE sc.notebook_id = ${notebookId}
+        ${sourceFilter}
       ORDER BY sc.source_id, sc.chunk_index ASC
       LIMIT ${limit}
     `);
@@ -133,6 +137,7 @@ export async function fallbackChunks(
     FROM source_chunks sc
     JOIN sources s ON s.id = sc.source_id
     WHERE sc.notebook_id = ${notebookId}
+      ${sourceFilter}
       AND sc.id = (
         SELECT sc2.id FROM source_chunks sc2
         WHERE sc2.source_id = sc.source_id
