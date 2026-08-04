@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 interface TextareaProps extends InputHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -11,7 +11,10 @@ interface TextareaProps extends InputHTMLAttributes<HTMLTextAreaElement> {
 
 const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, hint, fullWidth = true, className = "", id, ...props }, ref) => {
-    const textareaId = id || `textarea-${props.name || Math.random().toString(36).slice(2, 9)}`;
+    // useId is hydration-safe: it produces identical IDs on server and client,
+    // avoiding the mismatch caused by Math.random() during render.
+    const generatedId = useId();
+    const textareaId = id || `textarea-${props.name || generatedId}`;
 
     return (
       <div className={`${fullWidth ? "w-full" : ""} space-y-1.5`}>
@@ -25,11 +28,10 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           aria-invalid={error ? true : undefined}
           aria-describedby={error || hint ? `${textareaId}-desc` : undefined}
-          className={`w-full resize-none rounded-2xl border bg-slate-50 px-4 py-3 text-sm outline-none transition focus:bg-white focus:ring-2 dark:bg-slate-950 dark:text-slate-100 ${
-            error
+          className={`w-full resize-none rounded-2xl border bg-slate-50 px-4 py-3 text-sm outline-none transition focus:bg-white focus:ring-2 dark:bg-slate-950 dark:text-slate-100 ${error
               ? "border-red-300 focus:border-red-500 focus:ring-red-100 dark:border-red-900 dark:focus:ring-red-950"
               : "border-slate-200 focus:border-indigo-500 focus:ring-indigo-100 dark:border-slate-800 dark:focus:ring-indigo-950"
-          } ${className}`}
+            } ${className}`}
           {...props}
         />
         {(error || hint) && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -16,7 +16,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     { label, error, hint, leftIcon, rightIcon, fullWidth = true, className = "", id, ...props },
     ref
   ) => {
-    const inputId = id || `input-${props.name || Math.random().toString(36).slice(2, 9)}`;
+    // useId is hydration-safe: it produces identical IDs on server and client,
+    // avoiding the mismatch caused by Math.random() during render.
+    const generatedId = useId();
+    const inputId = id || `input-${props.name || generatedId}`;
 
     return (
       <div className={`${fullWidth ? "w-full" : ""} space-y-1.5`}>
