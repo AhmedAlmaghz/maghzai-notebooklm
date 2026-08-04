@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { notebooks, sources, users } from "@/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, isNull } from "drizzle-orm";
 import type { Notebook } from "@/lib/types";
 
 export interface NotebookWithCount extends Notebook {
@@ -22,6 +22,7 @@ export async function getNotebooksForUser(userId: string | null): Promise<Notebo
     })
     .from(notebooks)
     .leftJoin(sources, eq(sources.notebookId, notebooks.id))
+    .where(isNull(notebooks.deletedAt))
     .groupBy(notebooks.id)
     .orderBy(desc(notebooks.updatedAt));
 
@@ -29,6 +30,37 @@ export async function getNotebooksForUser(userId: string | null): Promise<Notebo
     // Public notebooks are visible to everyone; owned notebooks are visible
     // only to their owner. Unauthenticated visitors (userId === null) only see
     // public notebooks — never owned ones.
+    .filter((r) => r.userId === null || (userId !== null && r.userId === userId))
+    .map((r) => ({
+      ...r,
+      createdAt: typeof r.createdAt === "string" ? r.createdAt : (r.createdAt as Date).toISOString(),
+      updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : (r.updatedAt as Date).toISOString(),
+    }));
+}
+
+/**
+ * Returns notebooks that are currently in the trash (soft-deleted) and are
+ * visible to the given user. Used by the trash/restore API.
+ */
+export async function getTrashedNotebooksForUser(userId: string | null): Promise<NotebookWithCount[]> {
+  const rows = await db
+    .select({
+      id: notebooks.id,
+      userId: notebooks.userId,
+      title: notebooks.title,
+      emoji: notebooks.emoji,
+      description: notebooks.description,
+      createdAt: notebooks.createdAt,
+      updatedAt: notebooks.updatedAt,
+      sourceCount: sql<number>`count(distinct ${sources.id})`.mapWith(Number),
+    })
+    .from(notebooks)
+    .leftJoin(sources, eq(sources.notebookId, notebooks.id))
+    .where(sql`${notebooks.deletedAt} IS NOT NULL`)
+    .groupBy(notebooks.id)
+    .orderBy(desc(notebooks.updatedAt));
+
+  return rows
     .filter((r) => r.userId === null || (userId !== null && r.userId === userId))
     .map((r) => ({
       ...r,
@@ -81,7 +113,38 @@ export async function updateNotebook(id: string, data: { title?: string; emoji?:
   return notebook;
 }
 
+/**
+ * Soft-delete a notebook by setting `deletedAt`. The row (and all its child
+ * rows) remain in the database so it can be restored from the trash later.
+ */
 export async function deleteNotebook(id: string) {
+  const now = new Date();
+  const [notebook] = await db
+    .update(notebooks)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(eq(notebooks.id, id))
+    .returning();
+  return notebook;
+}
+
+/**
+ * Restore a soft-deleted notebook by clearing `deletedAt`.
+ * Returns the restored notebook, or `null` if it doesn't exist.
+ */
+export async function restoreNotebook(id: string) {
+  const [notebook] = await db
+    .update(notebooks)
+    .set({ deletedAt: null, updatedAt: new Date() })
+    .where(eq(notebooks.id, id))
+    .returning();
+  return notebook || null;
+}
+
+/**
+ * Permanently delete a notebook and all of its associated rows.
+ * Only used when the user explicitly empties the trash.
+ */
+export async function permanentlyDeleteNotebook(id: string) {
   await db.delete(notebooks).where(eq(notebooks.id, id));
 }
 

@@ -27,6 +27,9 @@ export const notebooks = sqliteTable("notebooks", {
   description: text("description"),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+  // Soft delete: when set, the notebook is hidden from normal lists but kept
+  // in the database so it can be restored from the trash.
+  deletedAt: text("deleted_at"),
 });
 
 export const sources = sqliteTable("sources", {

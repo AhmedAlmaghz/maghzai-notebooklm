@@ -30,6 +30,9 @@ export const notebooks = pgTable("notebooks", {
   description: text("description"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  // Soft delete: when set, the notebook is hidden from normal lists but kept
+  // in the database so it can be restored from the trash.
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const sources = pgTable("sources", {

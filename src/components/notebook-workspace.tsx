@@ -16,8 +16,15 @@ import NoteViewer from "@/components/note-viewer";
 import ThemeToggle from "@/components/theme-toggle";
 import LanguageToggle from "@/components/language-toggle";
 import AudioOverviewPlayer from "@/components/audio-overview-player";
+import NotebookSwitcher from "@/components/notebook-switcher";
+import Modal from "@/components/ui/modal";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 import { useI18n } from "@/i18n/provider";
 import { useNotebookShortcuts } from "@/hooks/use-keyboard-shortcuts";
+
+const NEW_NOTEBOOK_EMOJIS = ["📓", "📚", "🧪", "💡", "🧠", "📊", "🔬", "🗂️", "📝", "🌐", "⚡", "🎓", "🤖", "🚀"];
 
 type MobileTab = "sources" | "chat" | "studio";
 
@@ -34,11 +41,22 @@ export default function NotebookWorkspace({
 }) {
   const router = useRouter();
   const { t } = useI18n();
+  const { success, info } = useToast();
   const [title, setTitle] = useState(notebook.title);
   const [emoji, setEmoji] = useState(notebook.emoji || "📓");
   const [sources, setSources] = useState<SourceItem[]>(initialSources);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
+  // All notebooks the current user can see (for the header switcher).
+  const [allNotebooks, setAllNotebooks] = useState<Notebook[]>([notebook]);
+  // New-notebook modal state.
+  const [showNewNotebookModal, setShowNewNotebookModal] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newEmoji, setNewEmoji] = useState(NEW_NOTEBOOK_EMOJIS[0]);
+  const [creatingNotebook, setCreatingNotebook] = useState(false);
+  // Soft-delete confirmation state.
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingNotebook, setDeletingNotebook] = useState(false);
   // By default ALL sources are selected/used in chat & studio.
   // The user can toggle specific sources off; only selected ones are used.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -77,6 +95,20 @@ export default function NotebookWorkspace({
       return changed ? next : prev;
     });
   }, [sources]);
+
+  // Load the full notebook list for the header switcher (excluding trashed ones).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/notebooks")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setAllNotebooks(d.notebooks || []);
+      })
+      .catch(() => { });
+    return () => {
+      cancelled = true;
+    };
+  }, [notebook.id]);
 
   // Keyboard shortcuts
   useNotebookShortcuts({
@@ -135,9 +167,52 @@ export default function NotebookWorkspace({
   }
 
   async function deleteNotebook() {
-    if (!confirm("حذف هذا الدفتر بالكامل؟ لا يمكن التراجع عن هذا الإجراء.")) return;
-    await fetch(`/api/notebooks/${notebook.id}`, { method: "DELETE" });
-    router.push("/");
+    if (deletingNotebook) return;
+    setDeletingNotebook(true);
+    try {
+      const res = await fetch(`/api/notebooks/${notebook.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}), // no `permanent` flag → soft delete
+      });
+      if (!res.ok) throw new Error(t.errors.notebookDeleteError);
+      // Notify the user that the notebook moved to the trash and can be restored.
+      info(t.notebook.movedToTrash);
+      setShowDeleteConfirm(false);
+      router.push("/");
+    } catch {
+      setShowDeleteConfirm(false);
+      router.push("/");
+    } finally {
+      setDeletingNotebook(false);
+    }
+  }
+
+  async function createNewNotebook() {
+    if (creatingNotebook) return;
+    setCreatingNotebook(true);
+    try {
+      const title = newTitle.trim() || t.home.unnamedNotebook;
+      const emoji = newEmoji || NEW_NOTEBOOK_EMOJIS[Math.floor(Math.random() * NEW_NOTEBOOK_EMOJIS.length)];
+      const res = await fetch("/api/notebooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, emoji }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t.errors.notebookCreateError);
+      if (data.notebook) {
+        success(t.toast.success);
+        setShowNewNotebookModal(false);
+        setNewTitle("");
+        setNewEmoji(NEW_NOTEBOOK_EMOJIS[0]);
+        router.push(`/notebook/${data.notebook.id}`);
+      }
+    } catch (e) {
+      setShowNewNotebookModal(false);
+    } finally {
+      setCreatingNotebook(false);
+    }
   }
 
   // Calculate grid columns based on collapsed states
@@ -180,23 +255,32 @@ export default function NotebookWorkspace({
 
         {/* Action Header Items */}
         <div className="flex shrink-0 items-center gap-2">
+          {/* Notebook switcher: list of available notebooks + new notebook + trash */}
+          <NotebookSwitcher
+            currentNotebookId={notebook.id}
+            notebooks={allNotebooks}
+            onNotebooksChange={setAllNotebooks}
+            onNewNotebook={() => setShowNewNotebookModal(true)}
+          />
+
           {/* Audio Overview Podcast Button */}
           <button
             onClick={() => setShowAudioPlayer(!showAudioPlayer)}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-sm ${showAudioPlayer
-                ? "bg-indigo-600 text-white shadow-indigo-600/30"
-                : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:text-indigo-300 dark:hover:bg-indigo-900"
+              ? "bg-indigo-600 text-white shadow-indigo-600/30"
+              : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:text-indigo-300 dark:hover:bg-indigo-900"
               }`}
           >
             <Headphones size={15} />
-            <span className="hidden sm:inline">حوار صوتي</span>
+            <span className="hidden sm:inline">{t.notebook.audioOverview}</span>
           </button>
 
           <ThemeToggle />
           <LanguageToggle compact />
 
+          {/* Soft delete: moves the notebook to the trash */}
           <button
-            onClick={deleteNotebook}
+            onClick={() => setShowDeleteConfirm(true)}
             className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 transition"
             title={t.notebook.deleteNotebook}
           >
@@ -231,8 +315,8 @@ export default function NotebookWorkspace({
             key={key}
             onClick={() => setMobileTab(key)}
             className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-3 text-xs font-bold transition ${mobileTab === key
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-slate-400 dark:text-slate-500"
+              ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+              : "border-transparent text-slate-400 dark:text-slate-500"
               }`}
           >
             <Icon size={15} /> {label}
@@ -393,6 +477,85 @@ export default function NotebookWorkspace({
           }}
         />
       )}
+
+      {/* Soft-delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <Modal
+          open={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          size="sm"
+          title={t.notebook.deleteNotebook}
+          description={t.notebook.confirmDelete}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deletingNotebook}>
+                {t.common.cancel}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={deleteNotebook}
+                isLoading={deletingNotebook}
+                loadingText={t.common.loading}
+              >
+                <Trash2 size={15} />
+                {t.notebook.deleteNotebook}
+              </Button>
+            </>
+          }
+        >
+          <div className="py-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            {t.notebook.movedToTrash}
+          </div>
+        </Modal>
+      )}
+
+      {/* New Notebook modal */}
+      <Modal
+        open={showNewNotebookModal}
+        onClose={() => setShowNewNotebookModal(false)}
+        title={t.home.deleteNotebookTitle}
+        description={t.home.deleteNotebookSubtitle}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowNewNotebookModal(false)}>
+              {t.common.cancel}
+            </Button>
+            <Button onClick={createNewNotebook} isLoading={creatingNotebook} loadingText={t.common.loading}>
+              <BookOpen size={16} />
+              {t.home.createNotebookBtn}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">{t.home.notebookName}</label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+              <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5 dark:border-slate-800 dark:bg-slate-950">
+                {NEW_NOTEBOOK_EMOJIS.slice(0, 6).map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => setNewEmoji(e)}
+                    className={`rounded-xl p-1.5 text-xl transition ${
+                      newEmoji === e ? "bg-white shadow-sm dark:bg-slate-800" : "opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+              <Input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder={t.home.notebookPlaceholder}
+                className="flex-1"
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

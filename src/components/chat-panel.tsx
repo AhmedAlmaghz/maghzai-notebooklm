@@ -351,11 +351,17 @@ export default function ChatPanel({
             <Printer size={15} />
           </button>
 
-          {/* Conversations count with hover dropdown of user questions */}
+          {/* Conversations count with hover dropdown of user questions.
+              The button and its dropdown live inside ONE `relative` container
+              with a very high z-index (z-[9999]) so the menu always renders
+              above the message replies, the studio sidebar, and any parent
+              with `overflow-hidden`. The menu itself uses `position: fixed`
+              (with viewport coordinates computed from the trigger) to escape
+              any ancestor clipping. */}
           {messages.length > 0 && (
             <div
               ref={dropdownTriggerRef}
-              className="relative"
+              className="relative z-[9999]"
               onMouseEnter={openDropdown}
               onMouseLeave={closeDropdown}
             >
@@ -372,7 +378,7 @@ export default function ChatPanel({
                   aligned inward (into the chat frame) via `left`. */}
               {dropdownOpen && dropdownPos && (
                 <div
-                  className="fixed z-[999] mt-1 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                  className="fixed z-[9999] mt-1 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
                   style={{ top: dropdownPos.top, left: dropdownPos.left }}
                 >
                   <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">

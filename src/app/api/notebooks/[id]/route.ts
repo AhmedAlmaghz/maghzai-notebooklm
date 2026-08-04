@@ -2,7 +2,10 @@ import { db } from "@/db";
 import { sources, notes, messages } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { deleteNotebook, updateNotebook } from "@/lib/services/notebook-service";
+import {
+  deleteNotebook,
+  updateNotebook,
+} from "@/lib/services/notebook-service";
 import { requireNotebookAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
@@ -60,12 +63,43 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   return Response.json({ notebook: updated });
 }
 
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+/**
+ * DELETE /api/notebooks/[id]
+ *
+ * Performs a soft delete by default: the notebook is moved to the trash
+ * (`deletedAt` is set) and can be restored later.
+ *
+ * To permanently remove it, send `{ permanent: true }` in the request body.
+ */
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
 
-  const access = await requireNotebookAccess(id, "write");
+  // `allowDeleted: true` lets this handler reach trashed notebooks so they can
+  // be permanently deleted (soft delete of a live notebook also goes through
+  // this handler, and live notebooks are unaffected by the flag).
+  const access = await requireNotebookAccess(id, "write", { allowDeleted: true });
   if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
 
-  await deleteNotebook(id);
-  return Response.json({ ok: true });
+  const body = await req.json().catch(() => ({}));
+
+  if (body && body.permanent === true) {
+    const { permanentlyDeleteNotebook } = await import("@/lib/services/notebook-service");
+    await permanentlyDeleteNotebook(id);
+    return Response.json({ ok: true, permanent: true });
+  }
+
+  const notebook = await deleteNotebook(id);
+  if (!notebook) return Response.json({ error: "Notebook not found" }, { status: 404 });
+
+  return Response.json({
+    ok: true,
+    soft: true,
+    notebook: {
+      ...notebook,
+      createdAt:
+        typeof notebook.createdAt === "string" ? notebook.createdAt : (notebook.createdAt as Date).toISOString(),
+      updatedAt:
+        typeof notebook.updatedAt === "string" ? notebook.updatedAt : (notebook.updatedAt as Date).toISOString(),
+    },
+  });
 }

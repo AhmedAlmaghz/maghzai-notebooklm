@@ -19,6 +19,10 @@ export type NotebookAccessResult =
  *   so the existence of the resource is not leaked. This is consistent across
  *   all routes and avoids information disclosure about which notebooks exist.
  *
+ * Soft-deleted notebooks (deletedAt set) are hidden from every normal access
+ * (the trash keeps them invisible until explicitly restored). The restore
+ * endpoint opts in via `allowDeleted: true`.
+ *
  * Child resources (sources, notes, messages, audio, studio, suggestions...)
  * inherit this check from their parent notebook: there is no need to repeat
  * per-resource ownership checks.
@@ -27,13 +31,21 @@ export type NotebookAccessResult =
  * @param _role Kept for API symmetry ("read" for reads, "write" for mutations);
  *              the current model grants both roles to public notebooks and to
  *              the owner, so the role only documents intent for future rules.
+ * @param opts.allowDeleted Set to `true` to permit access to soft-deleted
+ *                          notebooks (used only by the restore endpoint).
  */
 export async function requireNotebookAccess(
     notebookId: string,
     _role: AccessRole,
+    opts?: { allowDeleted?: boolean },
 ): Promise<NotebookAccessResult> {
     const notebook = await getNotebookById(notebookId);
     if (!notebook) {
+        return { ok: false, status: 404, error: "Notebook not found" };
+    }
+
+    // Soft-deleted notebooks are not accessible through the normal routes.
+    if (!opts?.allowDeleted && notebook.deletedAt != null) {
         return { ok: false, status: 404, error: "Notebook not found" };
     }
 

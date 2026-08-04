@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
-import { Plus, BookOpen, Trash2, FileText, Loader2, Search, Sparkles } from "lucide-react";
+import { Plus, BookOpen, Trash2, FileText, Loader2, Search, Sparkles, RotateCcw, X } from "lucide-react";
 import type { Notebook } from "@/lib/types";
 import type { UserPayload } from "@/lib/auth";
 import ThemeToggle from "@/components/theme-toggle";
@@ -33,7 +33,7 @@ export default function NotebooksGrid({
 }) {
   const router = useRouter();
   const { t } = useI18n();
-  const { success, error } = useToast();
+  const { success, error, info } = useToast();
   const [notebooks, setNotebooks] = useState<Notebook[]>(initialNotebooks);
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,6 +42,10 @@ export default function NotebooksGrid({
   const [selectedEmoji, setSelectedEmoji] = useState(EMOJIS[0]);
   const [deleteTarget, setDeleteTarget] = useState<Notebook | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashNotebooks, setTrashNotebooks] = useState<Notebook[]>([]);
+  const [loadingTrash, setLoadingTrash] = useState(false);
+  const [permanentTarget, setPermanentTarget] = useState<Notebook | null>(null);
 
   const totalSources = useMemo(() => {
     return notebooks.reduce((acc, nb) => acc + (nb.sourceCount || 0), 0);
@@ -83,10 +87,15 @@ export default function NotebooksGrid({
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/notebooks/${deleteTarget.id}`, { method: "DELETE" });
+      // Soft delete: the notebook is moved to the trash and can be restored.
+      const res = await fetch(`/api/notebooks/${deleteTarget.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
       if (!res.ok) throw new Error(t.errors.notebookDeleteError);
       setNotebooks((prev) => prev.filter((n) => n.id !== deleteTarget.id));
-      success(t.toast.success);
+      info(t.notebook.movedToTrash);
     } catch {
       error(t.errors.notebookDeleteError);
     } finally {
@@ -100,6 +109,57 @@ export default function NotebooksGrid({
     setSelectedEmoji(tpl.emoji);
     createNotebook();
   };
+
+  async function loadTrash() {
+    setLoadingTrash(true);
+    try {
+      const res = await fetch("/api/notebooks/trash");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t.errors.apiError);
+      setTrashNotebooks(data.notebooks ?? []);
+    } catch {
+      error(t.errors.apiError);
+    } finally {
+      setLoadingTrash(false);
+    }
+  }
+
+  function toggleTrash() {
+    if (!showTrash) loadTrash();
+    setShowTrash((prev) => !prev);
+  }
+
+  async function restoreNotebookFromTrash(nb: Notebook) {
+    try {
+      const res = await fetch(`/api/notebooks/${nb.id}/restore`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t.errors.apiError);
+      setTrashNotebooks((prev) => prev.filter((n) => n.id !== nb.id));
+      // Refresh the active list so the restored notebook reappears.
+      setNotebooks((prev) => [data.notebook, ...prev.filter((n) => n.id !== nb.id)]);
+      success(t.notebook.notebookRestored);
+    } catch {
+      error(t.errors.apiError);
+    }
+  }
+
+  async function permanentlyDeleteNotebook() {
+    if (!permanentTarget) return;
+    try {
+      const res = await fetch(`/api/notebooks/${permanentTarget.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ permanent: true }),
+      });
+      if (!res.ok) throw new Error(t.errors.notebookDeleteError);
+      setTrashNotebooks((prev) => prev.filter((n) => n.id !== permanentTarget.id));
+      setNotebooks((prev) => prev.filter((n) => n.id !== permanentTarget.id));
+      setPermanentTarget(null);
+      info(t.notebook.notebookDeletedPermanently);
+    } catch {
+      error(t.errors.notebookDeleteError);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
@@ -135,6 +195,89 @@ export default function NotebooksGrid({
               {creating ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
               {t.home.newNotebook}
             </Button>
+
+            {/* Trash Button + Dropdown */}
+            <div className="relative z-[9999]">
+              <button
+                onClick={toggleTrash}
+                type="button"
+                aria-label={t.notebook.trash}
+                title={t.notebook.trash}
+                className={`flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-red-900 dark:hover:bg-red-950/40 dark:hover:text-red-400 ${showTrash ? "border-red-300 bg-red-50 text-red-600 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400" : ""
+                  }`}
+              >
+                <Trash2 size={17} />
+              </button>
+
+              {showTrash && (
+                <>
+                  {/* Click-away backdrop */}
+                  <div className="fixed inset-0 z-[9998]" onClick={() => setShowTrash(false)} />
+                  <div className="fixed right-4 top-[68px] z-[9999] w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{t.notebook.trash}</p>
+                      <button
+                        onClick={() => setShowTrash(false)}
+                        type="button"
+                        className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                        aria-label={t.common.close}
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto p-2">
+                      {loadingTrash ? (
+                        <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400">
+                          <Loader2 size={16} className="animate-spin" />
+                          {t.common.loading}
+                        </div>
+                      ) : trashNotebooks.length === 0 ? (
+                        <div className="py-8 text-center">
+                          <Trash2 size={22} className="mx-auto mb-2 text-slate-300" />
+                          <p className="text-sm text-slate-400">{t.notebook.trashEmpty}</p>
+                        </div>
+                      ) : (
+                        <ul className="space-y-1">
+                          {trashNotebooks.map((nb) => (
+                            <li
+                              key={nb.id}
+                              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                            >
+                              <span className="text-xl">{nb.emoji}</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{nb.title}</p>
+                                <p className="text-[11px] text-slate-400">
+                                  {new Date(nb.updatedAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => restoreNotebookFromTrash(nb)}
+                                type="button"
+                                className="flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-1.5 text-[11px] font-bold text-indigo-600 transition hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-300 dark:hover:bg-indigo-900"
+                                title={t.notebook.restore}
+                              >
+                                <RotateCcw size={13} />
+                                {t.notebook.restore}
+                              </button>
+                              <button
+                                onClick={() => setPermanentTarget(nb)}
+                                type="button"
+                                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/50"
+                                title={t.notebook.deleteForever}
+                                aria-label={t.notebook.deleteForever}
+                              >
+                                <X size={14} />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -306,9 +449,8 @@ export default function NotebooksGrid({
                   <button
                     key={emoji}
                     onClick={() => setSelectedEmoji(emoji)}
-                    className={`rounded-xl p-1.5 text-xl transition ${
-                      selectedEmoji === emoji ? "bg-white shadow-sm dark:bg-slate-800" : "opacity-60 hover:opacity-100"
-                    }`}
+                    className={`rounded-xl p-1.5 text-xl transition ${selectedEmoji === emoji ? "bg-white shadow-sm dark:bg-slate-800" : "opacity-60 hover:opacity-100"
+                      }`}
                   >
                     {emoji}
                   </button>
@@ -349,15 +491,26 @@ export default function NotebooksGrid({
         </div>
       </Modal>
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation — moves the notebook to the trash */}
       <ConfirmDialog
         open={deleteTarget !== null}
         title={t.common.delete}
-        message={t.home.confirmDeleteNotebook}
+        message={t.notebook.movedToTrash}
         confirmText={t.common.delete}
         cancelText={t.common.cancel}
         onConfirm={deleteNotebook}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Permanent Delete Confirmation (from trash) */}
+      <ConfirmDialog
+        open={permanentTarget !== null}
+        title={t.notebook.deleteForever}
+        message={t.notebook.confirmPermanentDelete}
+        confirmText={t.notebook.deleteForever}
+        cancelText={t.common.cancel}
+        onConfirm={permanentlyDeleteNotebook}
+        onCancel={() => setPermanentTarget(null)}
       />
     </main>
   );

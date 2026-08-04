@@ -22,7 +22,7 @@ async function initPostgres() {
   if (!databaseUrl) {
     throw new Error(
       "DATABASE_URL is required when using PostgreSQL driver.\n" +
-        "Set it to your Neon (or other Postgres) connection string."
+      "Set it to your Neon (or other Postgres) connection string."
     );
   }
 
@@ -64,7 +64,8 @@ async function initPostgres() {
       emoji VARCHAR(8) NOT NULL DEFAULT '📓',
       description TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      deleted_at TIMESTAMPTZ
     );
 
     CREATE TABLE IF NOT EXISTS sources (
@@ -107,6 +108,9 @@ async function initPostgres() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Soft-delete migration for existing databases.
+    ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
   `);
 
   return drizzle(pool, { schema: schemaPg });
@@ -149,7 +153,8 @@ function initSqlite() {
       emoji TEXT NOT NULL DEFAULT '📓',
       description TEXT,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      deleted_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS sources (
@@ -192,6 +197,9 @@ function initSqlite() {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    -- Soft-delete migration for existing databases.
+    ALTER TABLE notebooks ADD COLUMN deleted_at TEXT;
   `);
 
   return drizzle(sqlite, { schema: schemaSqlite }) as Awaited<ReturnType<typeof initPostgres>>;
