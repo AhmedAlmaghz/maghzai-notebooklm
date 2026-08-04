@@ -4,12 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import {
   Send, Sparkles, BookOpen, Loader2, MessageCircle, Globe,
   Lightbulb, ArrowUpRight, Copy, Check, Bookmark, Info,
-  ChevronDown
+  ChevronDown, Maximize2, Minimize2, FileDown, Printer
 } from "lucide-react";
 import type { ChatMessage, SourceItem, FollowUpSuggestion, NoteItem, AnswerMode } from "@/lib/types";
 import Markdown from "@/components/markdown";
 import { AnimatedContainer } from "@/components/ui/animated-container";
 import { useI18n } from "@/i18n/provider";
+
+/** Escape a string for safe insertion into HTML. */
+function escapeHtml(value: string): string {
+  const amp = String.fromCharCode(38) + "amp;";
+  const lt = String.fromCharCode(60) + "lt;";
+  const gt = String.fromCharCode(62) + "gt;";
+  const quot = String.fromCharCode(34) + "quot;";
+  const apos = String.fromCharCode(39) + "#039;";
+  return value
+    .replace(/&/g, amp)
+    .replace(/</g, lt)
+    .replace(/>/g, gt)
+    .replace(/"/g, quot)
+    .replace(/'/g, apos);
+}
 
 export default function ChatPanel({
   notebookId,
@@ -43,9 +58,16 @@ export default function ChatPanel({
   // Answer mode: "sources" (default) or "expanded".
   const [answerMode, setAnswerMode] = useState<AnswerMode>("sources");
   const [showModeHelper, setShowModeHelper] = useState(false);
+  // Fullscreen (reading mode) for the chat panel only.
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  // Dropdown state: opened on hover, positioned with `position: fixed` so it
+  // always renders above every other component (escaping any overflow clipping).
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   // Refs to each user message so we can scroll to them from the dropdown.
   const userMessageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const dropdownTriggerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -64,6 +86,15 @@ export default function ChatPanel({
         .catch(() => { });
     }
   }, [sources.length, messages.length, notebookId, selectedSourceIds]);
+
+  // Close the dropdown when the user presses Escape.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setDropdownOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   async function send(question: string) {
     if (!question.trim() || sending) return;
@@ -171,6 +202,98 @@ export default function ChatPanel({
     userMessageRefs.current.get(messageId)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  // Open the dropdown and compute its fixed position relative to the viewport.
+  // `left` is anchored to the trigger's left edge so the menu opens *inward*
+  // (into the chat frame) rather than outward toward the side panels.
+  function openDropdown() {
+    const el = dropdownTriggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+    setDropdownOpen(true);
+  }
+
+  function closeDropdown() {
+    setDropdownOpen(false);
+  }
+
+  // Toggle fullscreen (reading mode) for the chat panel only, using a CSS
+  // overlay (fixed inset-0 + very high z-index) so the rest of the UI is hidden.
+  function toggleFullscreen() {
+    setIsFullscreen((v) => !v);
+  }
+
+  // Build a clean, printable HTML document from the chat messages.
+  function buildChatPrintHtml(): string {
+    const rows = messages
+      .map((m) => {
+        const isUser = m.role === "user";
+        const label = isUser ? t.chat.yourQuestion : t.chat.assistantAnswer;
+        const body = escapeHtml(m.content).replace(/\n/g, "<br>");
+        return `
+          <div class="msg ${isUser ? "user" : "assistant"}">
+            <div class="role">${escapeHtml(label)}</div>
+            <div class="body">${body}</div>
+          </div>`;
+      })
+      .join("\n");
+
+    return `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHtml(t.chat.title)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+      direction: rtl;
+      padding: 40px;
+      line-height: 1.8;
+      color: #1e293b;
+      background: #fff;
+    }
+    h1 { color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; font-size: 22px; }
+    .msg { margin-bottom: 20px; padding: 14px 16px; border-radius: 12px; }
+    .msg.user { background: #eef2ff; border: 1px solid #e0e7ff; }
+    .msg.assistant { background: #f8fafc; border: 1px solid #e2e8f0; }
+    .role { font-size: 12px; font-weight: 700; color: #6366f1; margin-bottom: 6px; }
+    .body { font-size: 14px; white-space: normal; word-break: break-word; }
+    @media print {
+      body { padding: 20px; }
+      .msg { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(t.chat.title)}</h1>
+  ${rows}
+</body>
+</html>`;
+  }
+
+  // Export the chat as a PDF by opening a dedicated print window (the user can
+  // then "Save as PDF" from the print dialog).
+  function exportChatAsPdf() {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      setError(t.chat.exportPdfFailed);
+      return;
+    }
+    printWindow.document.write(buildChatPrintHtml());
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 400);
+  }
+
+  // Print the chat using the current page with print CSS that shows only the
+  // chat panel (see the `.chat-print-area` rules in globals.css).
+  function printChat() {
+    window.print();
+  }
+
   const lastAssistantMessage = messages.filter(m => m.role === "assistant").slice(-1)[0];
   const userQuestions = messages.filter((m) => m.role === "user");
 
@@ -180,7 +303,10 @@ export default function ChatPanel({
     followUps.length > 0 ? followUps.map((f) => f.text) : suggestions;
 
   return (
-    <div className={`flex h-full flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-200 ${isCollapsed ? "hidden" : ""}`}>
+    <div
+      className={`flex h-full flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-200 ${isCollapsed ? "hidden" : ""} ${isFullscreen ? "fixed inset-0 z-[999] h-screen" : ""
+        }`}
+    >
       {/* Panel Top Header */}
       <div className="flex items-center justify-between border-b border-slate-200 bg-white/50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="flex items-center gap-2">
@@ -190,46 +316,94 @@ export default function ChatPanel({
           <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">{t.chat.title}</h2>
         </div>
 
-        {/* Conversations count with hover dropdown of user questions */}
-        {messages.length > 0 && (
-          <div className="group relative z-50">
-            <button
-              type="button"
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-              title={t.chat.messagesDropdownHint}
-            >
-              {messages.length} {t.chat.messagesCountLabel}
-              <ChevronDown size={12} className="transition group-hover:rotate-180" />
-            </button>
+        {/* Header action buttons */}
+        <div className="flex items-center gap-1">
+          {/* Fullscreen (reading mode) toggle */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800 dark:hover:text-indigo-400"
+            title={isFullscreen ? t.chat.fullscreenExit : t.chat.fullscreenEnter}
+            aria-label={isFullscreen ? t.chat.fullscreenExit : t.chat.fullscreenEnter}
+          >
+            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          </button>
 
-            <div className="absolute right-0 top-full z-50 mt-1 hidden w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900 group-hover:block">
-              <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                {t.chat.messagesDropdownHint}
-              </div>
-              <div className="max-h-64 overflow-y-auto py-1">
-                {userQuestions.length === 0 ? (
-                  <div className="px-3 py-2 text-[11px] text-slate-400">{t.chat.noQuestionsYet}</div>
-                ) : (
-                  userQuestions.map((q) => (
-                    <button
-                      key={q.id}
-                      type="button"
-                      onClick={() => scrollToQuestion(q.id)}
-                      className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-indigo-50 dark:text-slate-300 dark:hover:bg-indigo-950/50"
-                    >
-                      <MessageCircle size={12} className="mt-0.5 shrink-0 text-indigo-400" />
-                      <span className="line-clamp-2">{q.content}</span>
-                    </button>
-                  ))
-                )}
-              </div>
+          {/* Export chat as PDF */}
+          <button
+            type="button"
+            onClick={exportChatAsPdf}
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800 dark:hover:text-indigo-400"
+            title={t.chat.exportPdf}
+            aria-label={t.chat.exportPdf}
+          >
+            <FileDown size={15} />
+          </button>
+
+          {/* Print chat */}
+          <button
+            type="button"
+            onClick={printChat}
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800 dark:hover:text-indigo-400"
+            title={t.chat.printChat}
+            aria-label={t.chat.printChat}
+          >
+            <Printer size={15} />
+          </button>
+
+          {/* Conversations count with hover dropdown of user questions */}
+          {messages.length > 0 && (
+            <div
+              ref={dropdownTriggerRef}
+              className="relative"
+              onMouseEnter={openDropdown}
+              onMouseLeave={closeDropdown}
+            >
+              <button
+                type="button"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                title={t.chat.messagesDropdownHint}
+              >
+                {messages.length} {t.chat.messagesCountLabel}
+                <ChevronDown size={12} className="transition group-hover:rotate-180" />
+              </button>
+
+              {/* Fixed-position dropdown: rendered above every component and
+                  aligned inward (into the chat frame) via `left`. */}
+              {dropdownOpen && dropdownPos && (
+                <div
+                  className="fixed z-[999] mt-1 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                  style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                >
+                  <div className="border-b border-slate-100 px-3 py-2 text-[11px] font-bold text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                    {t.chat.messagesDropdownHint}
+                  </div>
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    {userQuestions.length === 0 ? (
+                      <div className="px-3 py-2 text-[11px] text-slate-400">{t.chat.noQuestionsYet}</div>
+                    ) : (
+                      userQuestions.map((q) => (
+                        <button
+                          key={q.id}
+                          type="button"
+                          onClick={() => scrollToQuestion(q.id)}
+                          className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs text-slate-700 transition hover:bg-indigo-50 dark:text-slate-300 dark:hover:bg-indigo-950/50"
+                        >
+                          <MessageCircle size={12} className="mt-0.5 shrink-0 text-indigo-400" />
+                          <span className="line-clamp-2">{q.content}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-5">
+      <div className="chat-print-area flex-1 overflow-y-auto px-4 py-5">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-5 text-center text-slate-400">
             <div className="relative">

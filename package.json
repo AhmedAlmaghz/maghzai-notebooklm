@@ -1,8 +1,8 @@
 {
   "name": "MaghzAI NotebookLM",
-  "version": "v0.4.6",
+  "version": "v0.4.7",
   "author": "Ahmed Almaghz",
-  "homepage": "https://maghzai-nblm.vercel.app",
+  "homepage": "https://maghzai-notebooklm.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/AhmedAlmaghz/MaghzAI-NotebookLM.git"

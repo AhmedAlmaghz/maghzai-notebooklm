@@ -205,6 +205,11 @@ const ar = {
     messagesDropdownHint: "أسئلتك — اضغط للانتقال إلى السؤال",
     suggestionsLabel: "أسئلة مقترحة",
     noQuestionsYet: "لا توجد أسئلة بعد",
+    fullscreenEnter: "وضع ملء الشاشة (وضع القراءة)",
+    fullscreenExit: "الخروج من وضع ملء الشاشة",
+    exportPdf: "تصدير الدردشة كملف PDF",
+    printChat: "طباعة الدردشة",
+    exportPdfFailed: "تعذر تصدير الدردشة كملف PDF",
   },
   studio: {
     title: "استوديو التعلم وصناع الأفكار",

@@ -262,3 +262,35 @@
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
   }
 }
+
+/* Print styles: when printing the chat, hide the rest of the UI and show only
+   the chat panel's message area in a clean, readable layout. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .chat-print-area,
+  .chat-print-area * {
+    visibility: visible;
+  }
+
+  .chat-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: auto;
+    overflow: visible !important;
+    padding: 24px !important;
+    background: #ffffff !important;
+  }
+
+  .chat-print-area .max-w-4xl {
+    max-width: 100% !important;
+  }
+
+  /* Hide interactive controls that are not useful on paper. */
+  .chat-print-area button {
+    display: none !important;
+  }
+}

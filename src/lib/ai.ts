@@ -7,7 +7,7 @@ import type { WebSearchResult } from "@/lib/web-search";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
 // Default model matches .env.example (gemini-2.0-flash-lite is a real,
 // currently-valid model name on the free tier).
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash-lite";
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 export interface RetryOptions {
@@ -93,7 +93,7 @@ type GeminiContent = {
 async function callGemini(
   contents: GeminiContent[],
   systemInstruction?: string,
-  maxTokens = 2000,
+  maxTokens?: number,
   tools?: unknown[],
 ): Promise<string | null> {
   if (!GEMINI_API_KEY) {
@@ -106,9 +106,14 @@ async function callGemini(
       contents,
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: maxTokens,
       },
     };
+
+    // Only constrain the output length when an explicit limit is requested.
+    // By default the model is allowed to produce its full (unlimited) output.
+    if (typeof maxTokens === "number" && maxTokens > 0) {
+      (body.generationConfig as Record<string, unknown>).maxOutputTokens = maxTokens;
+    }
 
     if (systemInstruction) {
       body.systemInstruction = {
@@ -309,7 +314,6 @@ export async function answerQuestion(
     const result = await callGemini(
       [{ role: "user", parts: [{ text: userPrompt }] }],
       buildSystemPrompt(mode),
-      2500,
     );
 
     if (result) {
@@ -391,7 +395,7 @@ ${previousAnswer.slice(0, 2000)}
     let result = await callGemini(
       [{ role: "user", parts: [{ text: userPrompt }] }],
       systemPrompt,
-      1800,
+      undefined,
       [{ google_search: {} }],
     );
 
@@ -401,7 +405,6 @@ ${previousAnswer.slice(0, 2000)}
       result = await callGemini(
         [{ role: "user", parts: [{ text: userPrompt }] }],
         systemPrompt,
-        1800,
       );
     }
 
@@ -416,7 +419,6 @@ ${previousAnswer.slice(0, 2000)}
       const result = await callGemini(
         [{ role: "user", parts: [{ text: userPrompt }] }],
         systemPrompt,
-        1800,
       );
       if (result) {
         return { expandedContent: result, usedWebSearch: true };
@@ -455,7 +457,6 @@ async function generateFollowUpSuggestions(
   const result = await callGemini(
     [{ role: "user", parts: [{ text: `السؤال: ${question}\n\nالإجابة: ${answer.slice(0, 1000)}` }] }],
     systemPrompt,
-    300,
   );
 
   if (result) {
@@ -599,7 +600,6 @@ mindmap
     const result = await callGemini(
       [{ role: "user", parts: [{ text: `${instructions[kind]}\n\nالمصادر:\n\n${fullContext}` }] }],
       system,
-      3000,
     );
     if (result) return { content: result, usedAI: true };
   }
@@ -649,7 +649,6 @@ export async function suggestQuestions(
         },
       ],
       "أنت معلم يقترح أسئلة تحفّز التفكير والفهم العميق.",
-      400,
     );
     if (result) {
       return result
@@ -685,7 +684,6 @@ export async function generateNotebookTitle(
         },
       ],
       undefined,
-      250,
     );
     if (result) {
       try {

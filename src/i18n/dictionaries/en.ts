@@ -205,6 +205,11 @@ const en = {
     messagesDropdownHint: "Your questions — click to jump to a question",
     suggestionsLabel: "Suggested questions",
     noQuestionsYet: "No questions yet",
+    fullscreenEnter: "Fullscreen (reading mode)",
+    fullscreenExit: "Exit fullscreen",
+    exportPdf: "Export chat as PDF",
+    printChat: "Print chat",
+    exportPdfFailed: "Failed to export chat as PDF",
   },
   studio: {
     title: "Learning Studio & Idea Factory",
