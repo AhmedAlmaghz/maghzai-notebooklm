@@ -15,6 +15,11 @@ export default function SourceViewer({
 }) {
   const [copied, setCopied] = useState(false);
 
+  // Only render clickable links for http(s) URLs (rejects web-search://, javascript:, etc.)
+  function isSafeLink(url: string | null): url is string {
+    return !!url && /^https?:\/\//i.test(url);
+  }
+
   const handleCopy = () => {
     if (!content) return;
     navigator.clipboard.writeText(content);
@@ -28,9 +33,9 @@ export default function SourceViewer({
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-6 py-4 dark:border-slate-800">
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-base font-bold text-slate-900 dark:text-white">{source.title}</h3>
-            {source.sourceUrl && (
+            {isSafeLink(source.sourceUrl) && (
               <a
-                href={source.sourceUrl}
+                href={source.sourceUrl!}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-indigo-600 dark:text-indigo-400 hover:underline"

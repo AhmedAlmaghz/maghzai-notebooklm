@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       const source = await ingestSource({
         notebookId,
         title: `🎬 ${result.metadata.title}`,
-        type: "url",
+        type: "youtube",
         content,
         sourceUrl: `https://www.youtube.com/watch?v=${videoId}`,
       });
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             const source = await ingestSource({
               notebookId,
               title: `🎬 ${result.metadata.title}`,
-              type: "url",
+              type: "youtube",
               content,
               sourceUrl: url,
             });
@@ -89,10 +89,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         }
       }
 
-      // Regular URL handling
+      // Regular URL handling (with a 15s timeout so unreachable sites fail fast)
       const res = await fetch(url, {
         headers: { "User-Agent": "Mozilla/5.0 (compatible; NotebookAI/1.0)" },
         redirect: "follow",
+        signal: AbortSignal.timeout(15000),
       }).catch(() => null);
 
       if (!res || !res.ok) {

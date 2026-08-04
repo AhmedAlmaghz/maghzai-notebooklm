@@ -18,6 +18,9 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; sourceId: string }> },
 ) {
   const { id, sourceId } = await ctx.params;
-  await deleteSource(id, sourceId);
+  const deleted = await deleteSource(id, sourceId);
+  if (!deleted) {
+    return Response.json({ error: "Source not found" }, { status: 404 });
+  }
   return Response.json({ ok: true });
 }

@@ -3,7 +3,9 @@ import type { RetrievedChunk } from "@/lib/search";
 
 // Gemini API configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
+// Default model matches .env.example (gemini-2.0-flash-lite is a real,
+// currently-valid model name on the free tier).
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash-lite";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 export function isLLMAvailable(): boolean {

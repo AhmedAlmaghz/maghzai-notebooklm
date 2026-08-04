@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import { IS_POSTGRES } from "@/db/schema";
 
 export type RetrievedChunk = {
   chunkId: string;
@@ -9,9 +10,54 @@ export type RetrievedChunk = {
   rank: number;
 };
 
+/** Escapes LIKE wildcards so user input is matched literally. */
+function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/** Builds a tsquery string from a user query (PostgreSQL full-text syntax). */
+function buildTsQuery(safeQuery: string): string {
+  return safeQuery
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 16)
+    .map((w) => `${w}:*`)
+    .join(" | ");
+}
+
 /**
- * Retrieves the most relevant chunks for a query using PostgreSQL native
- * full-text search (no external embedding API required).
+ * Parameterized source-id filter. Uses bound parameters instead of raw string
+ * interpolation to avoid SQL injection.
+ */
+function buildSourceFilter(sourceIds?: string[]) {
+  if (!sourceIds || sourceIds.length === 0) return sql``;
+  return sql`AND sc.source_id IN (${sql.join(sourceIds.map((id) => sql`${id}`), sql`, `)})`;
+}
+
+type ChunkRow = {
+  id: string;
+  source_id: string;
+  content: string;
+  title: string;
+  rank?: number;
+};
+
+function mapRow(row: ChunkRow): RetrievedChunk {
+  return {
+    chunkId: row.id,
+    sourceId: row.source_id,
+    sourceTitle: row.title,
+    content: row.content,
+    rank: Number(row.rank ?? 0),
+  };
+}
+
+/**
+ * Retrieves the most relevant chunks for a query.
+ * - PostgreSQL: native full-text search (to_tsvector / ts_rank_cd).
+ * - SQLite: LIKE-based matching so the app remains usable without Postgres.
  */
 export async function searchChunks(
   notebookId: string,
@@ -22,71 +68,79 @@ export async function searchChunks(
   const safeQuery = query.trim();
   if (!safeQuery) return [];
 
-  const tsQuery = safeQuery
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 16)
-    .map((w) => `${w}:*`)
-    .join(" | ");
+  const sourceFilter = buildSourceFilter(sourceIds);
 
-  if (!tsQuery) return [];
+  if (IS_POSTGRES) {
+    const tsQuery = buildTsQuery(safeQuery);
+    if (!tsQuery) return [];
 
-  const sourceFilter = sourceIds && sourceIds.length > 0
-    ? sql`AND sc.source_id = ANY(${sql.raw(`ARRAY[${sourceIds.map((id) => `'${id.replace(/'/g, "")}'`).join(",")}]`)})`
-    : sql``;
+    const result = await db.execute<ChunkRow & { rank: number }>(sql`
+      SELECT sc.id, sc.source_id, sc.content, s.title,
+        ts_rank_cd(to_tsvector('simple', sc.content), to_tsquery('simple', ${tsQuery})) AS rank
+      FROM source_chunks sc
+      JOIN sources s ON s.id = sc.source_id
+      WHERE sc.notebook_id = ${notebookId}
+        AND to_tsvector('simple', sc.content) @@ to_tsquery('simple', ${tsQuery})
+        ${sourceFilter}
+      ORDER BY rank DESC
+      LIMIT ${limit}
+    `);
+    return result.rows.map(mapRow);
+  }
 
-  const result = await db.execute<{
-    id: string;
-    source_id: string;
-    content: string;
-    title: string;
-    rank: number;
-  }>(sql`
-    SELECT sc.id, sc.source_id, sc.content, s.title,
-      ts_rank_cd(to_tsvector('simple', sc.content), to_tsquery('simple', ${tsQuery})) AS rank
+  // SQLite: token-based LIKE matching
+  const terms = safeQuery.split(/\s+/).filter(Boolean).slice(0, 16);
+  if (terms.length === 0) return [];
+
+  const likeConditions = sql.join(
+    terms.map((t) => sql`sc.content LIKE ${`%${escapeLike(t)}%`} ESCAPE '\\'`),
+    sql` OR `,
+  );
+
+  const result = await db.execute<ChunkRow>(sql`
+    SELECT sc.id, sc.source_id, sc.content, s.title
     FROM source_chunks sc
     JOIN sources s ON s.id = sc.source_id
     WHERE sc.notebook_id = ${notebookId}
-      AND to_tsvector('simple', sc.content) @@ to_tsquery('simple', ${tsQuery})
+      AND (${likeConditions})
       ${sourceFilter}
-    ORDER BY rank DESC
+    ORDER BY sc.created_at ASC
     LIMIT ${limit}
   `);
-
-  return result.rows.map((row) => ({
-    chunkId: row.id,
-    sourceId: row.source_id,
-    sourceTitle: row.title,
-    content: row.content,
-    rank: Number(row.rank),
-  }));
+  return result.rows.map(mapRow);
 }
 
-/** Fallback: if full-text search finds nothing (e.g. stopword-only query), grab first chunks of each source. */
+/** Fallback: if full-text search finds nothing, grab the first chunk of each source. */
 export async function fallbackChunks(
   notebookId: string,
   limit = 6,
 ): Promise<RetrievedChunk[]> {
-  const result = await db.execute<{
-    id: string;
-    source_id: string;
-    content: string;
-    title: string;
-  }>(sql`
-    SELECT DISTINCT ON (sc.source_id) sc.id, sc.source_id, sc.content, s.title
+  if (IS_POSTGRES) {
+    const result = await db.execute<ChunkRow>(sql`
+      SELECT DISTINCT ON (sc.source_id) sc.id, sc.source_id, sc.content, s.title
+      FROM source_chunks sc
+      JOIN sources s ON s.id = sc.source_id
+      WHERE sc.notebook_id = ${notebookId}
+      ORDER BY sc.source_id, sc.chunk_index ASC
+      LIMIT ${limit}
+    `);
+    return result.rows.map(mapRow);
+  }
+
+  // SQLite: pick the earliest chunk per source via a correlated subquery
+  const result = await db.execute<ChunkRow>(sql`
+    SELECT sc.id, sc.source_id, sc.content, s.title
     FROM source_chunks sc
     JOIN sources s ON s.id = sc.source_id
     WHERE sc.notebook_id = ${notebookId}
-    ORDER BY sc.source_id, sc.chunk_index ASC
+      AND sc.id = (
+        SELECT sc2.id FROM source_chunks sc2
+        WHERE sc2.source_id = sc.source_id
+        ORDER BY sc2.chunk_index ASC
+        LIMIT 1
+      )
+    ORDER BY sc.created_at ASC
     LIMIT ${limit}
   `);
-  return result.rows.map((row) => ({
-    chunkId: row.id,
-    sourceId: row.source_id,
-    sourceTitle: row.title,
-    content: row.content,
-    rank: 0,
-  }));
+  return result.rows.map(mapRow);
 }

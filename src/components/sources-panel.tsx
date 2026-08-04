@@ -65,8 +65,20 @@ export default function SourcesPanel({
   async function deleteSource(id: string, e: React.MouseEvent) {
     e.stopPropagation();
     if (!confirm("حذف هذا المصدر؟")) return;
+    const removed = sources.find((s) => s.id === id);
+    // Keep selection consistent: drop the id if it was selected
+    if (selectedIds.has(id)) onToggleSelect(id);
+    // Optimistic removal
     setSources((prev) => prev.filter((s) => s.id !== id));
-    await fetch(`/api/notebooks/${notebookId}/sources/${id}`, { method: "DELETE" });
+    try {
+      const res = await fetch(`/api/notebooks/${notebookId}/sources/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`DELETE failed with status ${res.status}`);
+    } catch (err) {
+      console.error("Failed to delete source", err);
+      // Roll back on failure and keep selection consistent
+      if (removed) setSources((prev) => [...prev, removed]);
+      alert("تعذر حذف المصدر. حاول مرة أخرى.");
+    }
   }
 
   return (
@@ -140,11 +152,10 @@ export default function SourcesPanel({
                 <li key={source.id}>
                   <div
                     onClick={() => onViewSource(source)}
-                    className={`group flex cursor-pointer items-start gap-2.5 rounded-2xl p-2.5 transition border ${
-                      selected
+                    className={`group flex cursor-pointer items-start gap-2.5 rounded-2xl p-2.5 transition border ${selected
                         ? "border-indigo-200 bg-indigo-50/60 dark:border-indigo-900/60 dark:bg-indigo-950/30"
                         : "border-slate-100 bg-slate-50/50 hover:bg-slate-100 dark:border-slate-800/50 dark:bg-slate-900/50 dark:hover:bg-slate-800/80"
-                    }`}
+                      }`}
                   >
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleSelect(source.id); }}

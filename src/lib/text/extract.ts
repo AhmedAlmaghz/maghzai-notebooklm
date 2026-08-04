@@ -23,21 +23,11 @@ export function extractTextFromHtml(html: string): { title: string; text: string
 
 /** Extracts text content from a PDF file buffer. */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  // Configure pdfjs-dist worker before importing PDFParse
-  try {
-    // Dynamically import and configure pdfjs-dist
-    const pdfjsLib = await import("pdfjs-dist");
-    
-    // Set worker source to CDN to avoid local file issues
-    if (pdfjsLib.GlobalWorkerOptions) {
-      const version = pdfjsLib.version || "4.0.379";
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`;
-    }
-  } catch (error) {
-    console.warn("[PDF] Worker setup warning (non-critical):", error);
-    // Continue anyway - pdf-parse might handle this internally
-  }
-
+  // Note: pdf-parse v2 bundles its own pdfjs-dist worker internally
+  // (pdfjs-dist/legacy/build/pdf.mjs). Setting GlobalWorkerOptions.workerSrc
+  // here would target a *different* module instance (pdfjs-dist main entry)
+  // and is therefore ineffective — and a CDN worker in serverless Node is
+  // fragile. We rely on pdf-parse's Node defaults instead.
   try {
     const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: new Uint8Array(buffer) });

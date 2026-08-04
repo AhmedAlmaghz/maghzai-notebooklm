@@ -1,15 +1,20 @@
-import { db } from "@/db";
-import { notebooks } from "@/db/schema";
-import { ingestSource } from "@/lib/sources";
-import { eq } from "drizzle-orm";
+import { getNotebookById } from "@/lib/services/notebook-service";
+import { ingestSource } from "@/lib/services/source-service";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // Extended timeout for deep search
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash-lite";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+const GEMINI_FETCH_TIMEOUT_MS = 60000;
+
+// Read env vars lazily per request so changes / missing keys don't break module load.
+function geminiConfig() {
+  return {
+    apiKey: process.env.GEMINI_API_KEY?.trim(),
+    model: process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash-lite",
+  };
+}
 
 interface SearchResult {
   title: string;
@@ -17,14 +22,13 @@ interface SearchResult {
   sources: string[];
 }
 
-async function deepWebSearch(query: string, depth: "basic" | "deep" = "deep"): Promise<SearchResult | null> {
-  if (!GEMINI_API_KEY) {
-    console.error("[WebSearch] No Gemini API key");
-    return null;
-  }
+async function callGemini(query: string, depth: "basic" | "deep", withTools: boolean) {
+  const { apiKey, model } = geminiConfig();
+  if (!apiKey) return null;
 
-  const systemPrompt = depth === "deep" 
-    ? `أنت باحث متخصص في جمع المعلومات الشاملة من الويب. مهمتك:
+  const systemPrompt =
+    depth === "deep"
+      ? `أنت باحث متخصص في جمع المعلومات الشاملة من الويب. مهمتك:
 
 1. ابحث بعمق عن الموضوع المطلوب
 2. اجمع معلومات من مصادر متعددة وموثوقة
@@ -40,7 +44,7 @@ async function deepWebSearch(query: string, depth: "basic" | "deep" = "deep"): P
 - الطول المطلوب: 1500-3000 كلمة على الأقل
 
 في النهاية، أضف قسم "## المصادر" يحتوي على قائمة بالمواقع والمصادر التي استخدمتها.`
-    : `أنت باحث يجمع معلومات أساسية عن موضوع معين. قدّم ملخصاً شاملاً مع ذكر المصادر.`;
+      : `أنت باحث يجمع معلومات أساسية عن موضوع معين. قدّم ملخصاً شاملاً مع ذكر المصادر.`;
 
   const userPrompt = `ابحث في الويب واجمع معلومات شاملة ومفصّلة عن الموضوع التالي:
 
@@ -56,98 +60,76 @@ async function deepWebSearch(query: string, depth: "basic" | "deep" = "deep"): P
 - الإحصائيات والأرقام المهمة
 - المستقبل والتوقعات`;
 
-  try {
-    const body = {
-      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      tools: [{ google_search: {} }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: depth === "deep" ? 8000 : 3000,
-      },
-    };
+  const body: Record<string, unknown> = {
+    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: depth === "deep" ? 8000 : 3000,
+    },
+  };
+  if (withTools) {
+    body.tools = [{ google_search: {} }];
+  }
 
-    console.log(`[WebSearch] Starting ${depth} search for: ${query}`);
+  const res = await fetch(
+    `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(GEMINI_FETCH_TIMEOUT_MS),
+    },
+  );
 
-    const res = await fetch(
-      `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`[WebSearch] API error: ${res.status}`, errorText);
-      
-      // Retry without search tool if it fails
-      console.log("[WebSearch] Retrying without search tool...");
-      delete (body as Record<string, unknown>).tools;
-      
-      const retryRes = await fetch(
-        `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }
-      );
-      
-      if (!retryRes.ok) {
-        console.error("[WebSearch] Retry also failed");
-        return null;
-      }
-      
-      const retryData = await retryRes.json();
-      const content = retryData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      if (content) {
-        return {
-          title: `بحث: ${query}`,
-          content,
-          sources: ["تم إنشاء المحتوى بواسطة الذكاء الاصطناعي"],
-        };
-      }
-      return null;
-    }
-
-    const data = await res.json();
-    
-    // Extract grounding metadata if available
-    const groundingMetadata = data.candidates?.[0]?.groundingMetadata;
-    const searchSources: string[] = [];
-    
-    if (groundingMetadata?.groundingChunks) {
-      for (const chunk of groundingMetadata.groundingChunks) {
-        if (chunk.web?.uri) {
-          searchSources.push(chunk.web.uri);
-        }
-      }
-    }
-    
-    if (groundingMetadata?.webSearchQueries) {
-      console.log("[WebSearch] Queries used:", groundingMetadata.webSearchQueries);
-    }
-
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    
-    if (!content) {
-      console.error("[WebSearch] No content in response");
-      return null;
-    }
-
-    console.log(`[WebSearch] Success - ${content.length} chars, ${searchSources.length} sources`);
-
-    return {
-      title: `🔍 بحث عميق: ${query}`,
-      content,
-      sources: searchSources.length > 0 ? searchSources : ["بحث ويب عبر Google"],
-    };
-  } catch (err) {
-    console.error("[WebSearch] Error:", err);
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`[WebSearch] API error: ${res.status}`, errorText);
     return null;
   }
+
+  const data = await res.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!content) return null;
+
+  const groundingMetadata = data.candidates?.[0]?.groundingMetadata;
+  const searchSources: string[] = [];
+  if (groundingMetadata?.groundingChunks) {
+    for (const chunk of groundingMetadata.groundingChunks) {
+      if (chunk.web?.uri) {
+        searchSources.push(chunk.web.uri);
+      }
+    }
+  }
+
+  return { content, sources: searchSources };
+}
+
+async function deepWebSearch(query: string, depth: "basic" | "deep" = "deep"): Promise<SearchResult | null> {
+  console.log(`[WebSearch] Starting ${depth} search for: ${query}`);
+
+  // First attempt with the google_search grounding tool.
+  const withTools = await callGemini(query, depth, true);
+  if (withTools) {
+    return {
+      title: `🔍 بحث عميق: ${query}`,
+      content: withTools.content,
+      sources: withTools.sources.length > 0 ? withTools.sources : ["بحث ويب عبر Google"],
+    };
+  }
+
+  // Retry without the search tool (some models don't support grounding).
+  console.log("[WebSearch] Retrying without search tool...");
+  const withoutTools = await callGemini(query, depth, false);
+  if (withoutTools) {
+    return {
+      title: `بحث: ${query}`,
+      content: withoutTools.content,
+      sources: ["تم إنشاء المحتوى بواسطة الذكاء الاصطناعي"],
+    };
+  }
+
+  return null;
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -164,14 +146,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return Response.json({ error: "موضوع البحث قصير جداً" }, { status: 400 });
   }
 
-  const [notebook] = await db.select().from(notebooks).where(eq(notebooks.id, notebookId));
+  const notebook = await getNotebookById(notebookId);
   if (!notebook) {
     return Response.json({ error: "الدفتر غير موجود" }, { status: 404 });
   }
 
-  if (!GEMINI_API_KEY) {
-    return Response.json({ 
-      error: "البحث العميق يتطلب إعداد GEMINI_API_KEY" 
+  const { apiKey } = geminiConfig();
+  if (!apiKey) {
+    return Response.json({
+      error: "البحث العميق يتطلب إعداد GEMINI_API_KEY",
     }, { status: 400 });
   }
 
@@ -179,34 +162,32 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const result = await deepWebSearch(query, depth);
 
     if (!result) {
-      return Response.json({ 
-        error: "تعذر إجراء البحث. حاول مرة أخرى أو استخدم صيغة مختلفة للبحث." 
+      return Response.json({
+        error: "تعذر إجراء البحث. حاول مرة أخرى أو استخدم صيغة مختلفة للبحث.",
       }, { status: 400 });
     }
 
     // Format content with sources
     let formattedContent = result.content;
-    
+
     if (result.sources.length > 0 && !formattedContent.includes("## المصادر")) {
       formattedContent += "\n\n---\n\n## 🔗 المصادر المستخدمة\n\n";
       formattedContent += result.sources.slice(0, 10).map((s, i) => `${i + 1}. ${s}`).join("\n");
     }
 
+    // Store the result as a "text" source with a real, clickable search link.
     const source = await ingestSource({
       notebookId,
       title: result.title,
-      type: "url",
+      type: "text",
       content: formattedContent,
-      sourceUrl: `web-search://${encodeURIComponent(query)}`,
+      sourceUrl: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
     });
 
-    await db.update(notebooks).set({ updatedAt: new Date() }).where(eq(notebooks.id, notebookId));
-
-    return Response.json({ 
+    return Response.json({
       source,
       sourcesFound: result.sources.length,
     }, { status: 201 });
-
   } catch (err) {
     console.error("[WebSearch] Route error:", err);
     return Response.json({ error: "حدث خطأ أثناء البحث" }, { status: 500 });

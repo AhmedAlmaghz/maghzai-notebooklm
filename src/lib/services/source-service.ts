@@ -1,23 +1,40 @@
 import { db } from "@/db";
 import { sources, sourceChunks } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { splitIntoChunks } from "@/lib/text/chunk";
 import { normalizeWhitespace } from "@/lib/text/extract";
 import { touchNotebook } from "./notebook-service";
 
 export type SourceType = "text" | "url" | "pdf" | "file" | "youtube";
 
+/** List columns exclude the potentially large `content` field. */
+const sourceListColumns = {
+  id: sources.id,
+  notebookId: sources.notebookId,
+  title: sources.title,
+  type: sources.type,
+  sourceUrl: sources.sourceUrl,
+  status: sources.status,
+  errorMessage: sources.errorMessage,
+  charCount: sources.charCount,
+  createdAt: sources.createdAt,
+};
+
 export async function getSourcesForNotebook(notebookId: string) {
-  return db.select().from(sources).where(eq(sources.notebookId, notebookId)).orderBy(sources.createdAt);
+  return db
+    .select(sourceListColumns)
+    .from(sources)
+    .where(eq(sources.notebookId, notebookId))
+    .orderBy(sources.createdAt);
 }
 
 export async function getSourceById(notebookId: string, sourceId: string) {
   const [source] = await db
     .select()
     .from(sources)
-    .where(eq(sources.id, sourceId))
+    .where(and(eq(sources.id, sourceId), eq(sources.notebookId, notebookId)))
     .limit(1);
-  return source && source.notebookId === notebookId ? source : null;
+  return source || null;
 }
 
 export async function ingestSource(params: {
@@ -61,7 +78,18 @@ export async function ingestSource(params: {
   return source;
 }
 
-export async function deleteSource(notebookId: string, sourceId: string) {
-  await db.delete(sources).where(eq(sources.id, sourceId));
-  await touchNotebook(notebookId);
+/**
+ * Deletes a source only if it belongs to the given notebook.
+ * Returns true when a row was actually removed.
+ */
+export async function deleteSource(notebookId: string, sourceId: string): Promise<boolean> {
+  const deleted = await db
+    .delete(sources)
+    .where(and(eq(sources.id, sourceId), eq(sources.notebookId, notebookId)))
+    .returning({ id: sources.id });
+
+  if (deleted.length > 0) {
+    await touchNotebook(notebookId);
+  }
+  return deleted.length > 0;
 }

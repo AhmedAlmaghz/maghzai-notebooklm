@@ -2,12 +2,14 @@
  * YouTube transcript extraction utilities
  */
 
+const YOUTUBE_FETCH_TIMEOUT_MS = 15000;
+
 export function extractVideoId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
     /^([a-zA-Z0-9_-]{11})$/,
   ];
-  
+
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match) return match[1];
@@ -39,9 +41,12 @@ export async function fetchYouTubeTranscript(videoId: string): Promise<{
     // Try using yt-caption-kit first
     const { YtCaptionKit } = await import("yt-caption-kit");
     const kit = new YtCaptionKit();
-    
+
+    // Note: "auto" is not a valid language code for yt-caption-kit and would
+    // make the whole lookup fail with NoTranscriptFound, so we only request
+    // real language codes here.
     const result = await kit.fetch(videoId, {
-      languages: ["ar", "en", "auto"],
+      languages: ["ar", "en", "fr", "de", "es"],
       preserveFormatting: false,
     });
 
@@ -52,9 +57,9 @@ export async function fetchYouTubeTranscript(videoId: string): Promise<{
         .replace(/\s+/g, " ")
         .trim();
 
-      // Get video metadata
+      // Get video metadata (single watch-page fetch)
       const metadata = await fetchVideoMetadata(videoId);
-      
+
       return {
         transcript,
         metadata,
@@ -73,27 +78,35 @@ export async function fetchYouTubeTranscript(videoId: string): Promise<{
   }
 }
 
-async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata> {
+/**
+ * Fetches video metadata from the watch page.
+ * Accepts an optional pre-fetched `html` so callers that already downloaded the
+ * page (fetchTranscriptDirect) don't trigger a duplicate network request.
+ */
+async function fetchVideoMetadata(videoId: string, html?: string): Promise<VideoMetadata> {
   try {
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
-    });
-    const html = await res.text();
+    if (!html) {
+      const url = `https://www.youtube.com/watch?v=${videoId}`;
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+        signal: AbortSignal.timeout(YOUTUBE_FETCH_TIMEOUT_MS),
+      });
+      html = await res.text();
+    }
 
     const titleMatch = html.match(/<title>([^<]+)<\/title>/);
-    const title = titleMatch 
-      ? titleMatch[1].replace(/ - YouTube$/, "").trim() 
+    const title = titleMatch
+      ? titleMatch[1].replace(/ - YouTube$/, "").trim()
       : `فيديو يوتيوب ${videoId}`;
 
     const channelMatch = html.match(/"ownerChannelName":"([^"]+)"/);
     const channelName = channelMatch ? channelMatch[1] : "";
 
     const descMatch = html.match(/"shortDescription":"([^"]+)"/);
-    const description = descMatch 
-      ? descMatch[1].replace(/\\n/g, "\n").slice(0, 500) 
+    const description = descMatch
+      ? descMatch[1].replace(/\\n/g, "\n").slice(0, 500)
       : "";
 
     return { title, channelName, description };
@@ -111,12 +124,14 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
   metadata: VideoMetadata;
 } | null> {
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  
-  // Step 1: Fetch video page to get API key
+
+  // Step 1: Fetch video page to get API key (single page fetch — the HTML is
+  // reused below for metadata, avoiding a redundant request).
   const pageRes = await fetch(videoUrl, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     },
+    signal: AbortSignal.timeout(YOUTUBE_FETCH_TIMEOUT_MS),
   });
   const html = await pageRes.text();
 
@@ -140,6 +155,7 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
       },
       videoId,
     }),
+    signal: AbortSignal.timeout(YOUTUBE_FETCH_TIMEOUT_MS),
   });
   const playerData = await playerRes.json();
 
@@ -159,14 +175,16 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
   if (!track) track = tracks[0];
 
   // Step 3: Fetch transcript XML
-  const transcriptRes = await fetch(track.baseUrl);
+  const transcriptRes = await fetch(track.baseUrl, {
+    signal: AbortSignal.timeout(YOUTUBE_FETCH_TIMEOUT_MS),
+  });
   const xml = await transcriptRes.text();
 
   // Parse XML to extract text
   const textMatches = [...xml.matchAll(/<text[^>]*>([^<]*)<\/text>/g)];
   const transcript = textMatches
     .map((m) => m[1])
-    .map((t) => t.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"'))
+    .map((t) => t.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/'/g, "'").replace(/"/g, '"'))
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
@@ -175,7 +193,8 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
     return null;
   }
 
-  const metadata = await fetchVideoMetadata(videoId);
+  // Reuse the already-fetched page HTML for metadata (no duplicate request).
+  const metadata = await fetchVideoMetadata(videoId, html);
   return { transcript, metadata };
 }
 
@@ -184,16 +203,16 @@ export function formatYouTubeContent(
   metadata: VideoMetadata,
 ): string {
   let content = "";
-  
+
   if (metadata.channelName) {
     content += `**القناة:** ${metadata.channelName}\n\n`;
   }
-  
+
   if (metadata.description) {
     content += `**الوصف:**\n${metadata.description}\n\n---\n\n`;
   }
-  
+
   content += `**النص الكامل للفيديو:**\n\n${transcript}`;
-  
+
   return content;
 }
