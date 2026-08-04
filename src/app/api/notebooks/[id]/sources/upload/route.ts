@@ -4,9 +4,11 @@ import { requireNotebookAccess } from "@/lib/access";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// OCR (tesseract.js) is slow — allow up to 120s for scanned PDFs.
+// On Vercel, "force-dynamic" routes default to 300s on Pro; 120s is safe on Hobby.
+export const maxDuration = 120;
 
-const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_SIZE = 50 * 1024 * 1024; // 50MB (OCR benefits from larger scanned PDFs)
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const DOCX_EXT = ".docx";
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   if (file.size > MAX_SIZE) {
-    return Response.json({ error: "حجم الملف يتجاوز 20 ميجابايت" }, { status: 400 });
+    return Response.json({ error: "حجم الملف يتجاوز 50 ميجابايت" }, { status: 400 });
   }
 
   const extension = getExtension(file.name);
@@ -74,7 +76,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     if (!text.trim()) {
-      return Response.json({ error: "تعذر استخراج أي نص من هذا الملف" }, { status: 400 });
+      const hint = isPdf
+        ? "يبدو أن ملف PDF ممسوح ضوئياً أو تالف أو محمي بكلمة مرور"
+        : "يبدو أن الملف فارغ أو تالف";
+      return Response.json({ error: `تعذر استخراج أي نص من هذا الملف. ${hint}.` }, { status: 400 });
     }
 
     // ingestSource also touches the notebook's updatedAt, so no manual update needed.
@@ -88,6 +93,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return Response.json({ source }, { status: 201 });
   } catch (err) {
     console.error("Failed to process uploaded file", err);
-    return Response.json({ error: "تعذر معالجة الملف" }, { status: 500 });
+    const message =
+      err instanceof Error && err.message
+        ? err.message
+        : "تعذر معالجة الملف. تأكد من أنه ليس تالفاً أو مشفراً (كلمة مرور).";
+    return Response.json({ error: message }, { status: 400 });
   }
 }
