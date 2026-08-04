@@ -1,8 +1,15 @@
 /**
  * YouTube transcript extraction utilities
  */
+import type { TranscriptList } from "yt-caption-kit";
 
-const YOUTUBE_FETCH_TIMEOUT_MS = 15000;
+const YOUTUBE_FETCH_TIMEOUT_MS = 20000;
+
+// Language codes we prefer, in priority order. "ar" is the app's primary
+// language, "en" is the most widely available fallback. These are only a
+// *preference* — we do NOT hard-limit to them (that was the bug: videos whose
+// tracks are e.g. "es-419"/"pt-BR" would fail with NoTranscriptFound).
+const PREFERRED_LANGUAGE_CODES = ["ar", "en"] as const;
 
 export function extractVideoId(url: string): string | null {
   const patterns = [
@@ -33,47 +40,146 @@ interface VideoMetadata {
   description: string;
 }
 
+/**
+ * Structural type for a transcript track returned by yt-caption-kit.
+ * Kept structural so we don't need a static (top-level) import of the
+ * library, which is ESM-only and imported dynamically elsewhere.
+ */
+interface TranscriptTrackLike {
+  languageCode: string;
+  isGenerated: boolean;
+  fetch(preserveFormatting?: boolean): Promise<{ snippets: TranscriptSnippet[] }>;
+  translate(languageCode: string): TranscriptTrackLike;
+}
+
 export async function fetchYouTubeTranscript(videoId: string): Promise<{
   transcript: string;
   metadata: VideoMetadata;
 } | null> {
+  // Try using yt-caption-kit first, with dynamic track detection and a
+  // sensible fallback chain (manual > generated > translated).
   try {
-    // Try using yt-caption-kit first
     const { YtCaptionKit } = await import("yt-caption-kit");
     const kit = new YtCaptionKit();
 
-    // Note: "auto" is not a valid language code for yt-caption-kit and would
-    // make the whole lookup fail with NoTranscriptFound, so we only request
-    // real language codes here.
-    const result = await kit.fetch(videoId, {
-      languages: ["ar", "en", "fr", "de", "es"],
-      preserveFormatting: false,
-    });
-
-    if (result && result.snippets && result.snippets.length > 0) {
-      const transcript = result.snippets
-        .map((s: TranscriptSnippet) => s.text)
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      // Get video metadata (single watch-page fetch)
+    const transcript = await fetchTranscriptWithKit(kit, videoId);
+    if (transcript) {
       const metadata = await fetchVideoMetadata(videoId);
-
-      return {
-        transcript,
-        metadata,
-      };
+      return { transcript, metadata };
     }
   } catch (err) {
-    console.error("[YouTube] yt-caption-kit error:", err);
+    console.error(
+      "[YouTube] yt-caption-kit error:",
+      err instanceof Error ? err.message : err,
+    );
   }
 
-  // Fallback: Try direct Innertube API approach
+  // Fallback: try the direct Innertube API approach.
+  console.log("[YouTube] yt-caption-kit failed — trying direct Innertube fetch");
   try {
     return await fetchTranscriptDirect(videoId);
   } catch (err) {
     console.error("[YouTube] Direct fetch error:", err);
+    return null;
+  }
+}
+
+/**
+ * Lists the caption tracks for a video via yt-caption-kit and picks the best
+ * one instead of relying on a fixed language list (which made every video
+ * whose tracks weren't literally one of the hard-coded codes fail with
+ * NoTranscriptFound).
+ *
+ * Selection order:
+ *   1. manual track in a preferred language (exact code, e.g. "en")
+ *   2. manual track whose base language matches (e.g. "es-419" → "es")
+ *   3. any manually created track
+ *   4. generated (auto) track in a preferred language (exact / base match)
+ *   5. any generated track
+ *   6. translated track (YouTube exposes translation targets for most tracks)
+ */
+async function fetchTranscriptWithKit(
+  kit: { list(videoId: string): Promise<TranscriptList> },
+  videoId: string,
+): Promise<string | null> {
+  let list: TranscriptList;
+  try {
+    list = await kit.list(videoId);
+  } catch (err) {
+    console.error(
+      "[YouTube] Failed to list transcript tracks:",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+
+  const tracks = [...list] as TranscriptTrackLike[];
+  const manual = tracks.filter((t) => !t.isGenerated);
+  const generated = tracks.filter((t) => t.isGenerated);
+
+  const byPreferred = (pool: TranscriptTrackLike[]): TranscriptTrackLike | null => {
+    for (const code of PREFERRED_LANGUAGE_CODES) {
+      const exact = pool.find((t) => t.languageCode === code);
+      if (exact) return exact;
+    }
+    for (const code of PREFERRED_LANGUAGE_CODES) {
+      const base = pool.find((t) => t.languageCode.split("-")[0] === code);
+      if (base) return base;
+    }
+    return null;
+  };
+
+  // 1–2. Manual tracks (exact, then base-language match).
+  const manualPick = byPreferred(manual);
+  if (manualPick) return fetchAndJoinTranscript(manualPick);
+
+  // 3. Any manually created transcript.
+  if (manual.length > 0) {
+    return fetchAndJoinTranscript(manual[0]);
+  }
+
+  // 4–5. Generated (auto-generated) transcripts.
+  const generatedPick = byPreferred(generated);
+  if (generatedPick) return fetchAndJoinTranscript(generatedPick);
+  if (generated.length > 0) {
+    return fetchAndJoinTranscript(generated[0]);
+  }
+
+  // 6. No usable track — try translating a manual track into a preferred
+  //    language (e.g. Arabic), which YouTube supports for most tracks.
+  if (tracks.length > 0) {
+    for (const target of PREFERRED_LANGUAGE_CODES) {
+      try {
+        const translated = await fetchAndJoinTranscript(tracks[0].translate(target));
+        if (translated) return translated;
+      } catch {
+        // Translation target unavailable for this track — try next target.
+      }
+    }
+  }
+
+  return null;
+}
+
+/** Fetches a single transcript track and joins its snippets into one string. */
+async function fetchAndJoinTranscript(
+  track: TranscriptTrackLike,
+): Promise<string | null> {
+  try {
+    const fetched = await track.fetch(false);
+    if (!fetched || !fetched.snippets || fetched.snippets.length === 0) {
+      return null;
+    }
+    return fetched.snippets
+      .map((s: TranscriptSnippet) => s.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+  } catch (err) {
+    console.error(
+      "[YouTube] Failed to fetch transcript track:",
+      err instanceof Error ? err.message : err,
+    );
     return null;
   }
 }
@@ -135,7 +241,9 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
   });
   const html = await pageRes.text();
 
-  const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+  // Note: tolerate whitespace around the key (YouTube may emit
+  // `"INNERTUBE_API_KEY": "..."`). The previous regex without `\s*` missed it.
+  const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":\s*"([^"]+)"/);
   if (!apiKeyMatch) {
     console.error("[YouTube] INNERTUBE_API_KEY not found");
     return null;
@@ -165,12 +273,18 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
     return null;
   }
 
-  // Prefer Arabic, then English, then any available
-  const preferredLangs = ["ar", "en"];
+  // Prefer Arabic, then English (exact or base-language match), then any.
+  const preferredLangs = PREFERRED_LANGUAGE_CODES as readonly string[];
   let track = null;
   for (const lang of preferredLangs) {
     track = tracks.find((t: { languageCode: string }) => t.languageCode === lang);
     if (track) break;
+  }
+  if (!track) {
+    for (const lang of preferredLangs) {
+      track = tracks.find((t: { languageCode: string }) => t.languageCode.split("-")[0] === lang);
+      if (track) break;
+    }
   }
   if (!track) track = tracks[0];
 
@@ -180,11 +294,11 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
   });
   const xml = await transcriptRes.text();
 
-  // Parse XML to extract text
+  // Parse XML to extract text (decode XML entities properly).
   const textMatches = [...xml.matchAll(/<text[^>]*>([^<]*)<\/text>/g)];
   const transcript = textMatches
     .map((m) => m[1])
-    .map((t) => t.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/'/g, "'").replace(/"/g, '"'))
+    .map((t) => decodeXmlEntities(t))
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
@@ -196,6 +310,22 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
   // Reuse the already-fetched page HTML for metadata (no duplicate request).
   const metadata = await fetchVideoMetadata(videoId, html);
   return { transcript, metadata };
+}
+
+/** Decodes the XML entities used in YouTube caption XML. */
+const AMP = String.fromCharCode(38);
+const LT = String.fromCharCode(60);
+const GT = String.fromCharCode(62);
+const APOS = String.fromCharCode(39);
+const QUOT = String.fromCharCode(34);
+function decodeXmlEntities(input: string): string {
+  return input
+    .replace(new RegExp(AMP + "amp;", "g"), AMP)
+    .replace(new RegExp(LT + "lt;", "g"), LT)
+    .replace(new RegExp(GT + "gt;", "g"), GT)
+    .replace(new RegExp(APOS + "#39;", "g"), APOS)
+    .replace(new RegExp(QUOT + "quot;", "g"), QUOT)
+    .replace(new RegExp(AMP + "nbsp;", "g"), " ");
 }
 
 export function formatYouTubeContent(
