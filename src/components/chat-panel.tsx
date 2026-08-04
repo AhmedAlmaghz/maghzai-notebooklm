@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { 
-  Send, Sparkles, BookOpen, Loader2, MessageCircle, Globe, 
-  Lightbulb, ArrowUpRight, Copy, Check, Bookmark, RefreshCw 
+import {
+  Send, Sparkles, BookOpen, Loader2, MessageCircle, Globe,
+  Lightbulb, ArrowUpRight, Copy, Check, Bookmark, RefreshCw, Info
 } from "lucide-react";
-import type { ChatMessage, SourceItem, FollowUpSuggestion, NoteItem } from "@/lib/types";
+import type { ChatMessage, SourceItem, FollowUpSuggestion, NoteItem, AnswerMode } from "@/lib/types";
 import Markdown from "@/components/markdown";
 import { AnimatedContainer } from "@/components/ui/animated-container";
+import { useI18n } from "@/i18n/provider";
 
 export default function ChatPanel({
   notebookId,
@@ -28,6 +29,7 @@ export default function ChatPanel({
   onSaveAsNote?: (note: NoteItem) => void;
   isCollapsed?: boolean;
 }) {
+  const { t } = useI18n();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,9 @@ export default function ChatPanel({
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [savedNoteMessageId, setSavedNoteMessageId] = useState<string | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string>("");
+  // Answer mode: "sources" (default) or "expanded".
+  const [answerMode, setAnswerMode] = useState<AnswerMode>("sources");
+  const [showModeHelper, setShowModeHelper] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,7 +58,7 @@ export default function ChatPanel({
       fetch(`/api/notebooks/${notebookId}/suggestions${qs ? `?${qs}` : ""}`)
         .then((r) => r.json())
         .then((d) => setSuggestions(d.questions || []))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [sources.length, messages.length, notebookId, selectedSourceIds]);
 
@@ -84,7 +89,7 @@ export default function ChatPanel({
       const res = await fetch(`/api/notebooks/${notebookId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, sourceIds: selectedSourceIds }),
+        body: JSON.stringify({ question, sourceIds: selectedSourceIds, mode: answerMode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "حدث خطأ أثناء المحادثة");
@@ -203,11 +208,10 @@ export default function ChatPanel({
               <AnimatedContainer key={m.id} animation="slide" direction="up" duration={0.3}>
                 <div className={`flex ${m.role === "user" ? "justify-start" : "justify-start"}`}>
                   <div
-                    className={`group relative max-w-[95%] rounded-3xl p-5 shadow-sm transition-all ${
-                      m.role === "user"
-                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-indigo-600/20"
-                        : "border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-                    }`}
+                    className={`group relative max-w-[95%] rounded-3xl p-5 shadow-sm transition-all ${m.role === "user"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-indigo-600/20"
+                      : "border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                      }`}
                   >
                     {/* Role Header indicator */}
                     <div className="mb-2 flex items-center justify-between gap-4">
@@ -352,22 +356,70 @@ export default function ChatPanel({
       {/* Input Form Bar */}
       <form
         onSubmit={(e) => { e.preventDefault(); send(input); }}
-        className="flex items-center gap-3 border-t border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+        className="border-t border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
       >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="اسأل سؤالاً تفاعلياً حول مصادرك..."
-          className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-indigo-950"
-        />
-        <button
-          type="submit"
-          disabled={sending || !input.trim()}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 transition hover:scale-105 active:scale-95 disabled:opacity-40 disabled:shadow-none"
-        >
-          <Send size={18} />
-        </button>
+        {/* Answer mode toggle */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAnswerMode("sources")}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${answerMode === "sources"
+                ? "border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300"
+                : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-slate-700"
+              }`}
+            title={t.chat.sourcesOnlyModeHint}
+          >
+            <BookOpen size={12} />
+            {t.chat.sourcesOnlyMode}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAnswerMode("expanded")}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${answerMode === "expanded"
+                ? "border-blue-400 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950/70 dark:text-blue-300"
+                : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-slate-700"
+              }`}
+            title={t.chat.expandedModeHint}
+          >
+            <Globe size={12} />
+            {t.chat.expandedMode}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowModeHelper((v) => !v)}
+            className="flex items-center gap-1 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
+            title={t.chat.expandedModeHelper}
+            aria-label={t.chat.expandedModeHelper}
+          >
+            <Info size={14} />
+          </button>
+        </div>
+
+        {/* Helper tooltip when expanded mode is active */}
+        {answerMode === "expanded" && showModeHelper && (
+          <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-[11px] leading-relaxed text-blue-800 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-200">
+            {t.chat.expandedModeHelper}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={t.chat.inputPlaceholder}
+            className="flex-1 rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-indigo-950"
+          />
+          <button
+            type="submit"
+            disabled={sending || !input.trim()}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 transition hover:scale-105 active:scale-95 disabled:opacity-40 disabled:shadow-none"
+          >
+            <Send size={18} />
+          </button>
+        </div>
       </form>
     </div>
   );

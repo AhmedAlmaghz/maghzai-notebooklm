@@ -66,3 +66,11 @@ export type FollowUpSuggestion = {
   text: string;
   type: "expand" | "related" | "example" | "deeper";
 };
+
+/**
+ * Answer mode for the chat:
+ * - "sources": answer is built strictly from the selected sources (default).
+ * - "expanded": answer starts from the sources but the model may expand from
+ *   its own knowledge and/or search the web for a deeper, more detailed reply.
+ */
+export type AnswerMode = "sources" | "expanded";

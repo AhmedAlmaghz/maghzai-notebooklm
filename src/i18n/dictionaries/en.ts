@@ -195,6 +195,11 @@ const en = {
     rephraseQuestion: "Rephrase the question differently",
     localAnswerNote: "This answer was generated automatically through text analysis. For deeper educational answers, make sure GEMINI_API_KEY is enabled.",
     answerSummary: "💡 Summary",
+    sourcesOnlyMode: "Sources only",
+    sourcesOnlyModeHint: "Answer is built from the selected sources only",
+    expandedMode: "Expanded mode",
+    expandedModeHint: "Expand the answer from memory and the web",
+    expandedModeHelper: "The model will start from your selected sources, but may use its general knowledge or search the web to provide a deeper, more detailed answer (e.g. additional solved examples).",
   },
   studio: {
     title: "Learning Studio & Idea Factory",

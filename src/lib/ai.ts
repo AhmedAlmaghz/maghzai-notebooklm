@@ -1,5 +1,7 @@
 import { extractKeySentences, splitSentences, topKeywords } from "@/lib/text/summarize";
 import type { RetrievedChunk } from "@/lib/search";
+import type { AnswerMode } from "@/lib/types";
+import type { WebSearchResult } from "@/lib/web-search";
 
 // Gemini API configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
@@ -167,6 +169,8 @@ export type ChatAnswer = {
   followUps: FollowUpSuggestion[];
   usedAI: boolean;
   usedWebSearch?: boolean;
+  /** Source URLs collected from web search in expanded mode (if any). */
+  webSources?: string[];
 };
 
 const EDUCATIONAL_SYSTEM_PROMPT = `أنت معلّم ومساعد بحثي متميز يشبه NotebookLM. مهمتك الأساسية هي التعليم وشرح المفاهيم بطريقة سهلة وواضحة.
@@ -187,12 +191,83 @@ const EDUCATIONAL_SYSTEM_PROMPT = `أنت معلّم ومساعد بحثي مت�
 
 أجب بنفس لغة السؤال. إن لم تجد المعلومة في المصادر، صرّح بذلك واقترح ما يمكن للمستخدم فعله.`;
 
+/**
+ * System prompt for "expanded" mode: the model grounds its answer in the
+ * selected sources but is explicitly allowed to expand from its own knowledge
+ * and to use web search results for a deeper, more detailed reply.
+ */
+const EXPANDED_SYSTEM_PROMPT = `أنت معلّم ومساعد بحثي متميز يشبه NotebookLM. مهمتك الأساسية هي التعليم وشرح المفاهيم بطريقة سهلة وواضحة.
+
+## أسلوب الإجابة:
+1. **ابدأ بملخص واضح** للإجابة في جملة أو جملتين
+2. **اشرح المفاهيم الأساسية** بلغة بسيطة يفهمها المبتدئ
+3. **استخدم أمثلة عملية** لتوضيح الأفكار المجردة
+4. **نظّم الإجابة** بعناوين فرعية ونقاط واضحة
+5. **استشهد بالمصادر** بصيغة [1] أو [2] عند ذكر معلومة من المقتطفات
+6. **أضف سياقاً تعليمياً** يساعد على الفهم العميق
+
+## الوضع الموسع (Expanded Mode):
+أنت تعمل في الوضع الموسع، لذا:
+- **استخدم المصادر المحددة كأساس (grounding)** للإجابة، واعتمد عليها أولاً.
+- **يمكنك التوسع من معرفتك العامة** لإثراء الإجابة بأمثلة إضافية، تطبيقات عملية، سياق تاريخي، أو شرح أعمق غير موجود في المصادر.
+- **استخدم نتائج البحث في الويب** (إن وُجدت في السياق) لدعم الإجابة بمعلومات حديثة أو أمثلة حية.
+- إذا طلب المستخدم أمثلة محلولة أو أمثلة عملية غير موجودة في المصادر، قدّمها من معرفتك أو من نتائج الويب.
+- **ميّز بوضوح** بين ما هو من المصادر وما هو توسعة من معرفتك أو من الويب، حتى يبقى المستخدم مدركاً لمصدر المعلومة.
+
+## تنسيق الإجابة:
+- استخدم Markdown بشكل فعّال (عناوين، نقاط، **تأكيد**، \`مصطلحات\`)
+- اجعل الإجابة شاملة ومفصّلة (3-5 فقرات على الأقل)
+- إذا كان هناك معادلات رياضية استخدم $...$ أو $$...$$
+- اختم بـ "💡 **خلاصة**" تلخص أهم النقاط
+
+أجب بنفس لغة السؤال.`;
+
+/**
+ * Builds the reference context string from the retrieved source chunks.
+ * Each chunk is labelled with its source title for citation purposes.
+ */
+export function buildSourcesContext(chunks: RetrievedChunk[]): string {
+  return chunks
+    .map((c, i) => `[${i + 1}] المصدر: ${c.sourceTitle}\n${c.content}`)
+    .join("\n\n---\n\n");
+}
+
+/**
+ * Builds the web search context string from a web search result (if any).
+ * Returns an empty string when there is no web result to include.
+ */
+export function buildWebContext(webResult: WebSearchResult | null): string {
+  if (!webResult || !webResult.content) return "";
+  const sources = webResult.sources.length > 0
+    ? `\n\nمصادر الويب:\n${webResult.sources.slice(0, 10).map((s, i) => `${i + 1}. ${s}`).join("\n")}`
+    : "";
+  return `نتائج البحث في الويب:\n\n${webResult.content}${sources}`;
+}
+
+/**
+ * Returns the appropriate system prompt for the given answer mode.
+ * - "sources": strict grounding — the model must not add info outside sources.
+ * - "expanded": grounding + permission to expand from memory and web results.
+ */
+export function buildSystemPrompt(mode: AnswerMode): string {
+  if (mode === "expanded") {
+    return EXPANDED_SYSTEM_PROMPT;
+  }
+  return EDUCATIONAL_SYSTEM_PROMPT;
+}
+
 /** Answers a user question with educational depth and follow-up suggestions */
 export async function answerQuestion(
   question: string,
   chunks: RetrievedChunk[],
-  enableWebSearch = false,
+  options: {
+    mode?: AnswerMode;
+    webResult?: WebSearchResult | null;
+  } = {},
 ): Promise<ChatAnswer> {
+  const mode: AnswerMode = options.mode ?? "sources";
+  const webResult = options.webResult ?? null;
+
   if (chunks.length === 0) {
     return {
       answer:
@@ -219,16 +294,21 @@ export async function answerQuestion(
     });
   }
 
-  const context = chunks
-    .map((c, i) => `[${i + 1}] المصدر: ${c.sourceTitle}\n${c.content}`)
-    .join("\n\n---\n\n");
+  const context = buildSourcesContext(chunks);
+  const webContext = buildWebContext(webResult);
 
   if (isLLMAvailable()) {
-    const userPrompt = `المقتطفات المرجعية من مصادر المستخدم:\n\n${context}\n\n---\n\nسؤال المستخدم: ${question}\n\nقدّم إجابة تعليمية شاملة ومفصّلة تشرح المفاهيم بوضوح.`;
+    let userPrompt: string;
+    if (mode === "expanded") {
+      userPrompt = `المقتطفات المرجعية من مصادر المستخدم:\n\n${context}\n\n---\n\n${webContext ? `${webContext}\n\n---\n\n` : ""
+        }سؤال المستخدم: ${question}\n\nقدّم إجابة تعليمية شاملة ومفصّلة تشرح المفاهيم بوضوح. استخدم المصادر كأساس، ووسّع من معرفتك أو من نتائج الويب عند الحاجة.`;
+    } else {
+      userPrompt = `المقتطفات المرجعية من مصادر المستخدم:\n\n${context}\n\n---\n\nسؤال المستخدم: ${question}\n\nقدّم إجابة تعليمية شاملة ومفصّلة تشرح المفاهيم بوضوح. اعتمد فقط على المعلومات الموجودة في المصادر أعلاه ولا تضف معلومات من خارجها.`;
+    }
 
     const result = await callGemini(
       [{ role: "user", parts: [{ text: userPrompt }] }],
-      EDUCATIONAL_SYSTEM_PROMPT,
+      buildSystemPrompt(mode),
       2500,
     );
 
@@ -241,6 +321,8 @@ export async function answerQuestion(
         citations: citationSources.slice(0, 6),
         followUps,
         usedAI: true,
+        usedWebSearch: mode === "expanded" && Boolean(webResult),
+        webSources: mode === "expanded" ? webResult?.sources : undefined,
       };
     }
   }
@@ -269,6 +351,8 @@ export async function answerQuestion(
       { text: `ما علاقة ${keywords[0] || "هذا"} بالموضوع؟`, type: "related" },
     ],
     usedAI: false,
+    usedWebSearch: mode === "expanded" && Boolean(webResult),
+    webSources: mode === "expanded" ? webResult?.sources : undefined,
   };
 }
 
