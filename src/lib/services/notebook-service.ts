@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { notebooks, sources } from "@/db/schema";
+import { notebooks, sources, users } from "@/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import type { Notebook } from "@/lib/types";
 
@@ -44,12 +44,26 @@ export async function createNotebook(params: {
   emoji: string;
   userId?: string | null;
 }) {
+  // Validate that the userId actually exists in the users table.
+  // A stale JWT (e.g. after the database was reset) can carry an id that no
+  // longer has a corresponding row, which causes SQLITE_CONSTRAINT_FOREIGNKEY.
+  let resolvedUserId: string | null = params.userId ?? null;
+  if (resolvedUserId) {
+    const [existingUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, resolvedUserId));
+    if (!existingUser) {
+      resolvedUserId = null;
+    }
+  }
+
   const [notebook] = await db
     .insert(notebooks)
     .values({
       title: params.title,
       emoji: params.emoji,
-      userId: params.userId ?? null,
+      userId: resolvedUserId,
     })
     .returning();
   return notebook;

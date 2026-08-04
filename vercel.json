@@ -1,0 +1,26 @@
+{
+  "framework": "nextjs",
+  "functions": {
+    "src/app/api/notebooks/[id]/sources/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/notebooks/[id]/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/notebooks/[id]/studio/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/notebooks/[id]/audio/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    }
+  ]
+}

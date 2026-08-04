@@ -1,13 +1,355 @@
-npm notice run MaghzAI NotebookLM@v0.1.0 dev
+npm notice run MaghzAI NotebookLM@v0.3.0 dev
 npm notice run next dev
 ▲ Next.js 16.2.6 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.1.5:3000
 - Environments: .env
-✓ Ready in 1451ms
-⚠ Slow filesystem detected. The benchmark took 424ms. If c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\.next/dev is a network drive, consider moving it to a local folder.
+✓ Ready in 1785ms
+⚠ Slow filesystem detected. The benchmark took 721ms. If c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\.next/dev is a network drive, consider moving it to a local folder.
 See more: https://nextjs.org/docs/app/guides/local-development
 
- GET / 200 in 2.5s (next.js: 454ms, application-code: 2.1s)
-
-c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)>
+○ Compiling / ...
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+✓ Finished writing to filesystem cache in 3.2min
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+✓ Finished writing to filesystem cache in 2.0min
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+✓ Finished writing to filesystem cache in 13.2s
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}
+✓ Finished writing to filesystem cache in 12.2s
+Error: Can't resolve 'tailwindcss' in 'c:\Users\AbuEmad\Downloads'
+    [2m[at finishWithoutResolve (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:952:18)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1048:13)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\enhanced-resolve\lib\Resolver.js:1132:5)][0m
+    [2m[at eval (eval at create (c:\Users\AbuEmad\Downloads\build-notebooklm-style-application (1)\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m {
+  details: "resolve 'tailwindcss' in 'c:\\Users\\AbuEmad\\Downloads'\n" +
+    '  Parsed request is a module\n' +
+    '  No description file found in c:\\Users\\AbuEmad\\Downloads or above\n' +
+    '  resolve as module\n' +
+    "    c:\\Users\\AbuEmad\\Downloads\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\AbuEmad\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "    c:\\node_modules doesn't exist or is not a directory"
+}

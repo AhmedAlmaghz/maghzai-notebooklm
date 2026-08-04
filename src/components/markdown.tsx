@@ -8,6 +8,37 @@ import { Components } from "react-markdown";
 
 const KATEX_CSS = "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css";
 
+// Arabic Unicode block: U+0600–U+06FF
+const ARABIC_RE = /[\u0600-\u06FF]/;
+
+/**
+ * Escape dollar signs that are either:
+ *  1. Immediately adjacent to an Arabic character, or
+ *  2. Wrapping a string that contains Arabic characters.
+ *
+ * This prevents remark-math from treating Arabic text as LaTeX math,
+ * while leaving genuine math expressions (e.g. $x^2$) untouched.
+ */
+function sanitizeArabicDollars(content: string): string {
+  // Replace $...$ and $$...$$ blocks that contain Arabic characters
+  // with the same text but with the $ signs escaped (\$).
+  return content
+    // Block math: $$...$$
+    .replace(/\$\$([\s\S]*?)\$\$/g, (match, inner) => {
+      if (ARABIC_RE.test(inner)) {
+        return `\\$\\$${inner}\\$\\$`;
+      }
+      return match;
+    })
+    // Inline math: $...$
+    .replace(/\$([^\n$]*?)\$/g, (match, inner) => {
+      if (ARABIC_RE.test(inner)) {
+        return `\\$${inner}\\$`;
+      }
+      return match;
+    });
+}
+
 const components: Components = {
   img: ({ src, alt, ...props }) => {
     if (!src) return null;
@@ -136,16 +167,17 @@ export default function Markdown({
   content: string;
   className?: string;
 }) {
+  const safeContent = sanitizeArabicDollars(content);
   return (
     <>
       <link rel="stylesheet" href={KATEX_CSS} />
       <div className={`prose prose-slate dark:prose-invert prose-sm max-w-none ${className}`}>
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
+          rehypePlugins={[[rehypeKatex, { strict: false, trust: false }]]}
           components={components}
         >
-          {content}
+          {safeContent}
         </ReactMarkdown>
       </div>
     </>

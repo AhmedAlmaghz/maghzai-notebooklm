@@ -1,5 +1,30 @@
+# Dependencies
 node_modules/
 
+# Next.js build output
 .next/
+out/
 
+# Environment variables - NEVER commit these
 .env
+.env.local
+.env.*.local
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+dev-server.log
+*.log
+
+# Misc files accidentally created
+c
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript output
+tsc-output.txt
