@@ -68,10 +68,16 @@ export async function fetchYouTubeTranscript(videoId: string): Promise<{
       return { transcript, metadata };
     }
   } catch (err) {
-    console.error(
-      "[YouTube] yt-caption-kit error:",
-      err instanceof Error ? err.message : err,
-    );
+    // Diagnostic: yt-caption-kit error classes (RequestBlocked, IpBlocked,
+    // NoTranscriptFound, TranscriptsDisabled, ...) inherit from
+    // CouldNotRetrieveTranscript whose `message` is EMPTY — the useful detail
+    // lives in `toString()`. Log both so the real cause is visible.
+    const name = err instanceof Error ? err.name : typeof err;
+    const detail =
+      err && typeof (err as { toString?: () => string }).toString === "function"
+        ? String((err as { toString: () => string }).toString())
+        : String(err);
+    console.error(`[YouTube] yt-caption-kit error (${name}):`, detail);
   }
 
   // Fallback: try the direct Innertube API approach.
@@ -245,7 +251,11 @@ async function fetchTranscriptDirect(videoId: string): Promise<{
   // `"INNERTUBE_API_KEY": "..."`). The previous regex without `\s*` missed it.
   const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":\s*"([^"]+)"/);
   if (!apiKeyMatch) {
-    console.error("[YouTube] INNERTUBE_API_KEY not found");
+    // Diagnostic: log whether the page looks like a consent/blocked page.
+    const looksBlocked = /consent\.youtube\.com|g-recaptcha|Sign in to confirm/i.test(html);
+    console.error(
+      `[YouTube] INNERTUBE_API_KEY not found (looksBlocked=${looksBlocked}, htmlLen=${html.length})`,
+    );
     return null;
   }
   const apiKey = apiKeyMatch[1];

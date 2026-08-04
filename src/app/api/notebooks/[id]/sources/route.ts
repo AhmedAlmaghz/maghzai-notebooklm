@@ -49,6 +49,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       const result = await fetchYouTubeTranscript(videoId);
 
       if (!result || !result.transcript) {
+        console.error(`[YouTube] No transcript returned for video ${videoId}`);
         return Response.json({
           error: "تعذر استخراج النص من هذا الفيديو. تأكد من أن الفيديو يحتوي على ترجمة/تعليقات توضيحية."
         }, { status: 400 });
