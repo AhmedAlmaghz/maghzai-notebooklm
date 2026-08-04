@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { notes, sources } from "@/db/schema";
 import { generateStudioArtifact, studioTitle, type StudioKind } from "@/lib/ai";
+import { requireNotebookAccess } from "@/lib/access";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
@@ -11,6 +12,10 @@ const VALID_KINDS: StudioKind[] = ["summary", "faq", "study_guide", "timeline", 
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: notebookId } = await ctx.params;
+
+  const access = await requireNotebookAccess(notebookId, "write");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   const body = await req.json().catch(() => ({}));
   const kind = body.kind as StudioKind;
 

@@ -1,25 +1,30 @@
 import { NextRequest } from "next/server";
-import { getNotebookById } from "@/lib/services/notebook-service";
 import { getSourcesForNotebook, ingestSource } from "@/lib/services/source-service";
 import { extractTextFromHtml } from "@/lib/text/extract";
 import { extractVideoId, fetchYouTubeTranscript, formatYouTubeContent, isYouTubeUrl } from "@/lib/youtube";
+import { requireNotebookAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
+
+  const access = await requireNotebookAccess(id, "read");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   const rows = await getSourcesForNotebook(id);
   return Response.json({ sources: rows });
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: notebookId } = await ctx.params;
+
+  const access = await requireNotebookAccess(notebookId, "write");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   const body = await req.json().catch(() => ({}));
   const kind = body.kind as "text" | "url" | "youtube";
-
-  const notebook = await getNotebookById(notebookId);
-  if (!notebook) return Response.json({ error: "Notebook not found" }, { status: 404 });
 
   try {
     if (kind === "text") {

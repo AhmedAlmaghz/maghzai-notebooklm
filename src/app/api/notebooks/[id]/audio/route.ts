@@ -3,14 +3,19 @@ import { db } from "@/db";
 import { sources } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { generateSpeech, type TTSOptions } from "@/lib/services/tts-service";
+import { requireNotebookAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // Extended timeout for audio generation
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: notebookId } = await ctx.params;
+
+  const access = await requireNotebookAccess(notebookId, "write");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   const body = await req.json().catch(() => ({}));
-  
+
   const text = typeof body.text === "string" ? body.text.trim() : "";
   const language = typeof body.language === "string" ? body.language : "ar-SA";
   const speed = typeof body.speed === "number" ? body.speed : 1.0;
@@ -68,7 +73,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: notebookId } = await ctx.params;
-  
+
+  const access = await requireNotebookAccess(notebookId, "read");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   // Get notebook sources for audio summary
   const notebookSources = await db
     .select({ title: sources.title, content: sources.content })
@@ -82,7 +90,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   // Generate a podcast-style script
   const script = generatePodcastScript(notebookSources);
-  
+
   return Response.json({
     script,
     sourceCount: notebookSources.length,

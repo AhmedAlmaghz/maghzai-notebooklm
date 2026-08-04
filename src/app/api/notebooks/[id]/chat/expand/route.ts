@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { messages } from "@/db/schema";
 import { searchWebAndExpand } from "@/lib/ai";
+import { requireNotebookAccess } from "@/lib/access";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 
@@ -9,6 +10,10 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: notebookId } = await ctx.params;
+
+  const access = await requireNotebookAccess(notebookId, "write");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   const body = await req.json().catch(() => ({}));
   const question = typeof body.question === "string" ? body.question.trim() : "";
   const previousAnswer = typeof body.previousAnswer === "string" ? body.previousAnswer : "";
@@ -21,8 +26,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const { expandedContent, usedWebSearch } = await searchWebAndExpand(question, previousAnswer);
 
   if (!expandedContent) {
-    return Response.json({ 
-      error: "تعذر البحث في الويب. تأكد من إعداد GEMINI_API_KEY." 
+    return Response.json({
+      error: "تعذر البحث في الويب. تأكد من إعداد GEMINI_API_KEY."
     }, { status: 400 });
   }
 
@@ -42,7 +47,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
   }
 
-  return Response.json({ 
+  return Response.json({
     expandedContent,
     usedWebSearch,
   });

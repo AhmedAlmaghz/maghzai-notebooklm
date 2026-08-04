@@ -2,15 +2,17 @@ import { db } from "@/db";
 import { sources, notes, messages } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
-import { deleteNotebook, getNotebookById, updateNotebook } from "@/lib/services/notebook-service";
+import { deleteNotebook, updateNotebook } from "@/lib/services/notebook-service";
+import { requireNotebookAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
 
-  const notebook = await getNotebookById(id);
-  if (!notebook) return Response.json({ error: "Notebook not found" }, { status: 404 });
+  const access = await requireNotebookAccess(id, "read");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+  const notebook = access.notebook;
 
   const [notebookSources, notebookMessages, notebookNotes] = await Promise.all([
     db
@@ -41,6 +43,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
+
+  const access = await requireNotebookAccess(id, "write");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   const body = await req.json().catch(() => ({}));
 
   const updates: { title?: string; emoji?: string; description?: string } = {};
@@ -56,6 +62,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
+
+  const access = await requireNotebookAccess(id, "write");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   await deleteNotebook(id);
   return Response.json({ ok: true });
 }

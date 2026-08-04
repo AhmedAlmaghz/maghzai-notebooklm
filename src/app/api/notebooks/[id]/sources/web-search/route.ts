@@ -1,5 +1,6 @@
-import { getNotebookById } from "@/lib/services/notebook-service";
 import { ingestSource } from "@/lib/services/source-service";
+import { requireNotebookAccess } from "@/lib/access";
+import { withRetry } from "@/lib/ai";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +8,16 @@ export const maxDuration = 120; // Extended timeout for deep search
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_FETCH_TIMEOUT_MS = 60000;
+
+/** Error carrying an HTTP status, so withRetry can classify transient 429/5xx. */
+class HttpStatusError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "HttpStatusError";
+    this.status = status;
+  }
+}
 
 // Read env vars lazily per request so changes / missing keys don't break module load.
 function geminiConfig() {
@@ -85,6 +96,13 @@ async function callGemini(query: string, depth: "basic" | "deep", withTools: boo
   if (!res.ok) {
     const errorText = await res.text();
     console.error(`[WebSearch] API error: ${res.status}`, errorText);
+    // Transient failures (rate limit / server errors) are thrown so the
+    // unified retry policy backs off and retries. Permanent client errors
+    // (400/401/403/404) return null, preserving the previous behaviour:
+    // the strategy falls back to the tool-less attempt or fails gracefully.
+    if (res.status === 429 || res.status >= 500) {
+      throw new HttpStatusError(res.status, `Gemini API error ${res.status}: ${errorText}`);
+    }
     return null;
   }
 
@@ -108,28 +126,41 @@ async function callGemini(query: string, depth: "basic" | "deep", withTools: boo
 async function deepWebSearch(query: string, depth: "basic" | "deep" = "deep"): Promise<SearchResult | null> {
   console.log(`[WebSearch] Starting ${depth} search for: ${query}`);
 
-  // First attempt with the google_search grounding tool.
-  const withTools = await callGemini(query, depth, true);
-  if (withTools) {
-    return {
-      title: `🔍 بحث عميق: ${query}`,
-      content: withTools.content,
-      sources: withTools.sources.length > 0 ? withTools.sources : ["بحث ويب عبر Google"],
-    };
-  }
+  // Unified retry policy around the whole "try with tools, then without tools"
+  // strategy. Every attempt (including the tool-less fallback) gets its own
+  // fresh AbortSignal and participates in the same exponential backoff, so a
+  // transient rate-limit or 5xx during the fallback is retried too.
+  const strategy = withRetry(
+    async () => {
+      // First attempt with the google_search grounding tool.
+      const withTools = await callGemini(query, depth, true);
+      if (withTools) {
+        return {
+          title: `🔍 بحث عميق: ${query}`,
+          content: withTools.content,
+          sources: withTools.sources.length > 0 ? withTools.sources : ["بحث ويب عبر Google"],
+        } as SearchResult;
+      }
 
-  // Retry without the search tool (some models don't support grounding).
-  console.log("[WebSearch] Retrying without search tool...");
-  const withoutTools = await callGemini(query, depth, false);
-  if (withoutTools) {
-    return {
-      title: `بحث: ${query}`,
-      content: withoutTools.content,
-      sources: ["تم إنشاء المحتوى بواسطة الذكاء الاصطناعي"],
-    };
-  }
+      // Fall back to a tool-less attempt (some models don't support grounding).
+      console.log("[WebSearch] Retrying without search tool...");
+      const withoutTools = await callGemini(query, depth, false);
+      if (withoutTools) {
+        return {
+          title: `بحث: ${query}`,
+          content: withoutTools.content,
+          sources: ["تم إنشاء المحتوى بواسطة الذكاء الاصطناعي"],
+        } as SearchResult;
+      }
 
-  return null;
+      // No content from either attempt: treat as a transient failure so the
+      // whole strategy is retried with backoff.
+      throw new Error("Gemini returned no content");
+    },
+    { maxRetries: 3, baseDelayMs: 500, maxDelayMs: 8000 },
+  );
+
+  return strategy;
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -146,9 +177,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return Response.json({ error: "موضوع البحث قصير جداً" }, { status: 400 });
   }
 
-  const notebook = await getNotebookById(notebookId);
-  if (!notebook) {
-    return Response.json({ error: "الدفتر غير موجود" }, { status: 404 });
+  const access = await requireNotebookAccess(notebookId, "write");
+  if (!access.ok) {
+    return Response.json({ error: access.error }, { status: access.status });
   }
 
   const { apiKey } = geminiConfig();

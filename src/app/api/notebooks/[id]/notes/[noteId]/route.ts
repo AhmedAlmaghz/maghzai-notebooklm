@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { deleteNote, updateNote } from "@/lib/services/note-service";
+import { requireNotebookAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,10 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string; noteId: string }> },
 ) {
   const { id, noteId } = await ctx.params;
+
+  const access = await requireNotebookAccess(id, "write");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   const body = await req.json().catch(() => ({}));
 
   const updates: { title?: string; content?: string; kind?: never } = {};
@@ -24,6 +29,10 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; noteId: string }> },
 ) {
   const { id, noteId } = await ctx.params;
+
+  const access = await requireNotebookAccess(id, "write");
+  if (!access.ok) return Response.json({ error: access.error }, { status: access.status });
+
   await deleteNote(id, noteId);
   return Response.json({ ok: true });
 }

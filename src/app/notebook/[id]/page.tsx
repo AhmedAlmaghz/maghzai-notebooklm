@@ -3,6 +3,7 @@ import { messages, notebooks, notes, sources } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import NotebookWorkspace from "@/components/notebook-workspace";
+import { requireNotebookAccess } from "@/lib/access";
 import type { ChatMessage, NoteItem, SourceItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -23,8 +24,11 @@ const sourceListColumns = {
 export default async function NotebookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [notebook] = await db.select().from(notebooks).where(eq(notebooks.id, id));
-  if (!notebook) notFound();
+  // Enforce the same resource-level authorization as the API routes:
+  // public notebooks are viewable by anyone, owned notebooks only by their
+  // owner. Unauthorized visitors get a 404 (notFound) so existence is hidden.
+  const access = await requireNotebookAccess(id, "read");
+  if (!access.ok) notFound();
 
   const [sourceRows, messageRows, noteRows] = await Promise.all([
     db.select(sourceListColumns).from(sources).where(eq(sources.notebookId, id)).orderBy(sources.createdAt),
@@ -62,9 +66,9 @@ export default async function NotebookPage({ params }: { params: Promise<{ id: s
   return (
     <NotebookWorkspace
       notebook={{
-        ...notebook,
-        createdAt: typeof notebook.createdAt === "string" ? notebook.createdAt : (notebook.createdAt as Date).toISOString(),
-        updatedAt: typeof notebook.updatedAt === "string" ? notebook.updatedAt : (notebook.updatedAt as Date).toISOString(),
+        ...access.notebook,
+        createdAt: typeof access.notebook.createdAt === "string" ? access.notebook.createdAt : (access.notebook.createdAt as Date).toISOString(),
+        updatedAt: typeof access.notebook.updatedAt === "string" ? access.notebook.updatedAt : (access.notebook.updatedAt as Date).toISOString(),
       }}
       initialSources={initialSources}
       initialMessages={initialMessages}

@@ -21,6 +21,24 @@ export function extractTextFromHtml(html: string): { title: string; text: string
   return { title, text: text.trim() };
 }
 
+/** Extracts raw text content from a DOCX file buffer using mammoth. */
+export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
+  try {
+    const mammoth = await import("mammoth");
+    const result = await mammoth.extractRawText({ buffer });
+    const text = (result.value || "").trim();
+    if (!text) {
+      throw new Error("Empty DOCX content");
+    }
+    return text;
+  } catch (error) {
+    console.error("[DOCX] Failed to extract text:", error);
+    throw new Error(
+      "تعذر قراءة ملف DOCX. تأكد من أن الملف غير تالف أو مشفر (حماية بكلمة مرور غير مدعومة).",
+    );
+  }
+}
+
 /** Extracts text content from a PDF file buffer. */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   // Note: pdf-parse v2 bundles its own pdfjs-dist worker internally

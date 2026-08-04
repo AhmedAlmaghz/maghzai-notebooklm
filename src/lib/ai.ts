@@ -8,6 +8,77 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash-lite";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
+export interface RetryOptions {
+  /** Total number of retries after the initial attempt (default 3 → 4 attempts total). */
+  maxRetries?: number;
+  /** Base delay in ms for exponential backoff (default 500). */
+  baseDelayMs?: number;
+  /** Upper bound for the backoff delay in ms (default 8000). */
+  maxDelayMs?: number;
+}
+
+/**
+ * Generic retry helper with exponential backoff + random jitter.
+ *
+ * - Retries only transient failures: HTTP 429, 5xx, network errors and
+ *   timeouts (AbortError). Permanent request errors (4xx other than 429,
+ *   e.g. 400/401/403/404) are NOT retried.
+ * - The caller is responsible for creating a fresh AbortSignal per attempt;
+ *   this helper never reuses an already-aborted signal.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = {},
+): Promise<T> {
+  const maxRetries = options.maxRetries ?? 3;
+  const baseDelayMs = options.baseDelayMs ?? 500;
+  const maxDelayMs = options.maxDelayMs ?? 8000;
+
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err) {
+      const shouldRetry = isTransientError(err);
+      if (!shouldRetry || attempt >= maxRetries) {
+        throw err;
+      }
+
+      attempt += 1;
+      // Exponential backoff: base * 2^(attempt-1) plus random jitter.
+      const exponential = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+      const jitter = Math.random() * exponential * 0.5;
+      const delayMs = Math.min(exponential + jitter, maxDelayMs);
+
+      console.log(`[Retry] Attempt ${attempt}/${maxRetries} failed; retrying in ${Math.round(delayMs)}ms`, err);
+      await sleep(delayMs);
+    }
+  }
+}
+
+/** Classifies an error as transient (retryable) or permanent. */
+export function isTransientError(err: unknown): boolean {
+  if (err instanceof Error && err.name === "AbortError") {
+    return true; // timeout / aborted request
+  }
+  if (err instanceof TypeError) {
+    return true; // network-level failures (fetch rejects with TypeError)
+  }
+  if (isStatusCode(err)) {
+    const status = err.status;
+    return status === 429 || status >= 500; // rate limit or server errors
+  }
+  return false;
+}
+
+function isStatusCode(err: unknown): err is { status: number } {
+  return typeof err === "object" && err !== null && "status" in err && typeof (err as { status: unknown }).status === "number";
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function isLLMAvailable(): boolean {
   return Boolean(GEMINI_API_KEY && GEMINI_API_KEY.length > 10);
 }
@@ -57,21 +128,21 @@ async function callGemini(
     });
 
     const responseText = await res.text();
-    
+
     if (!res.ok) {
       console.error(`[Gemini] API error ${res.status}:`, responseText);
       return null;
     }
 
     const data = JSON.parse(responseText);
-    
+
     if (data.promptFeedback?.blockReason) {
       console.error("[Gemini] Content blocked:", data.promptFeedback.blockReason);
       return null;
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    
+
     if (!text) {
       console.error("[Gemini] No text in response:", JSON.stringify(data).slice(0, 500));
       return null;
@@ -160,14 +231,14 @@ export async function answerQuestion(
       EDUCATIONAL_SYSTEM_PROMPT,
       2500,
     );
-    
+
     if (result) {
       // Generate follow-up suggestions
       const followUps = await generateFollowUpSuggestions(question, result, chunks);
-      
-      return { 
-        answer: result, 
-        citations: citationSources.slice(0, 6), 
+
+      return {
+        answer: result,
+        citations: citationSources.slice(0, 6),
         followUps,
         usedAI: true,
       };
@@ -179,20 +250,20 @@ export async function answerQuestion(
   const combinedText = chunks.map((c) => c.content).join(" ");
   const relevantSentences = extractKeySentences(combinedText, 6);
   const keywords = topKeywords(combinedText, 5);
-  
+
   const answerBody = relevantSentences.length
     ? `## الإجابة من المصادر\n\n` +
-      relevantSentences.map((s, i) => `- ${s.trim()} [${(i % citationSources.length) + 1}]`).join("\n") +
-      `\n\n**الكلمات المفتاحية:** ${keywords.join("، ")}`
+    relevantSentences.map((s, i) => `- ${s.trim()} [${(i % citationSources.length) + 1}]`).join("\n") +
+    `\n\n**الكلمات المفتاحية:** ${keywords.join("، ")}`
     : chunks[0].content.slice(0, 500);
 
   const answer =
     `${answerBody}\n\n---\n\n` +
     `💡 _تم إنشاء هذه الإجابة تلقائياً عبر التحليل النصي. لإجابات تعليمية أعمق، تأكد من تفعيل GEMINI_API_KEY._`;
 
-  return { 
-    answer, 
-    citations: citationSources.slice(0, 6), 
+  return {
+    answer,
+    citations: citationSources.slice(0, 6),
     followUps: [
       { text: "اشرح هذا بتفصيل أكثر", type: "expand" },
       { text: `ما علاقة ${keywords[0] || "هذا"} بالموضوع؟`, type: "related" },
@@ -255,7 +326,7 @@ ${previousAnswer.slice(0, 2000)}
     }
   } catch (err) {
     console.error("[AI] Web search expansion error:", err);
-    
+
     // Fallback: try without search tool
     try {
       const result = await callGemini(

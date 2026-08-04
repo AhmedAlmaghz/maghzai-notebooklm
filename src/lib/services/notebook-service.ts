@@ -26,7 +26,10 @@ export async function getNotebooksForUser(userId: string | null): Promise<Notebo
     .orderBy(desc(notebooks.updatedAt));
 
   return rows
-    .filter((r) => !userId || !r.userId || r.userId === userId)
+    // Public notebooks are visible to everyone; owned notebooks are visible
+    // only to their owner. Unauthenticated visitors (userId === null) only see
+    // public notebooks — never owned ones.
+    .filter((r) => r.userId === null || (userId !== null && r.userId === userId))
     .map((r) => ({
       ...r,
       createdAt: typeof r.createdAt === "string" ? r.createdAt : (r.createdAt as Date).toISOString(),
