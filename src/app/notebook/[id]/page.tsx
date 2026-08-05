@@ -3,6 +3,7 @@ import { messages, notebooks, notes, sources } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import NotebookWorkspace from "@/components/notebook-workspace";
+import { SessionRefresh } from "@/components/session-refresh";
 import { requireNotebookAccess } from "@/lib/access";
 import type { ChatMessage, NoteItem, SourceItem } from "@/lib/types";
 
@@ -64,15 +65,19 @@ export default async function NotebookPage({ params }: { params: Promise<{ id: s
   })) as unknown as NoteItem[];
 
   return (
-    <NotebookWorkspace
-      notebook={{
-        ...access.notebook,
-        createdAt: typeof access.notebook.createdAt === "string" ? access.notebook.createdAt : (access.notebook.createdAt as Date).toISOString(),
-        updatedAt: typeof access.notebook.updatedAt === "string" ? access.notebook.updatedAt : (access.notebook.updatedAt as Date).toISOString(),
-      }}
-      initialSources={initialSources}
-      initialMessages={initialMessages}
-      initialNotes={initialNotes}
-    />
+    <>
+      {/* Silent session bootstrap: refreshes the short-lived access cookie. */}
+      <SessionRefresh />
+      <NotebookWorkspace
+        notebook={{
+          ...access.notebook,
+          createdAt: typeof access.notebook.createdAt === "string" ? access.notebook.createdAt : (access.notebook.createdAt as Date).toISOString(),
+          updatedAt: typeof access.notebook.updatedAt === "string" ? access.notebook.updatedAt : (access.notebook.updatedAt as Date).toISOString(),
+        }}
+        initialSources={initialSources}
+        initialMessages={initialMessages}
+        initialNotes={initialNotes}
+      />
+    </>
   );
 }

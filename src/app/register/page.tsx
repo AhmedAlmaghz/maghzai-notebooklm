@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, UserPlus } from "lucide-react";
+import { Mail, Lock, User, UserPlus, MailCheck } from "lucide-react";
 import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
 import AuthLayout from "@/components/auth/auth-layout";
@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showVerifyBanner, setShowVerifyBanner] = useState(false);
 
   function validate(): boolean {
     let valid = true;
@@ -72,6 +73,7 @@ export default function RegisterPage() {
     if (!validate()) return;
 
     setLoading(true);
+    setShowVerifyBanner(false);
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -80,10 +82,19 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        // Surface the API message (rate-limited 429, existing email, …).
         error(data.error || t.auth.emailExists);
         return;
       }
       success(t.auth.registerSuccess);
+
+      // The backend always emails a verification link; the new user's
+      // emailVerifiedAt is null. Show a "check your email" banner on the way
+      // to the dashboard.
+      if (data.user && data.user.emailVerifiedAt == null) {
+        setShowVerifyBanner(true);
+      }
+
       router.push("/");
       router.refresh();
     } catch {
@@ -95,6 +106,20 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout subtitle={t.auth.registerSubtitle}>
+      {showVerifyBanner && (
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900/60 dark:bg-emerald-950/40">
+          <MailCheck size={18} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold leading-relaxed text-emerald-800 dark:text-emerald-300">
+              {t.authPages.forgotPasswordSuccessTitle}
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-400">
+              {t.auth.registerVerifyBanner}
+            </p>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <Input
           name="name"

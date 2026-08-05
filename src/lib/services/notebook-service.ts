@@ -1,14 +1,49 @@
 import { db } from "@/db";
-import { notebooks, sources, users } from "@/db/schema";
-import { eq, desc, sql, isNull } from "drizzle-orm";
+import { IS_POSTGRES, notebooks, sources, users } from "@/db/schema";
+import { and, eq, desc, sql, isNull, inArray, or } from "drizzle-orm";
 import type { Notebook } from "@/lib/types";
+
+/**
+ * Dual-dialect timestamp value.
+ *
+ * Postgres stores `timestamptz` (a `Date`); SQLite stores an ISO-8601 string.
+ * Drizzle's better-sqlite3 driver rejects `Date` objects for TEXT columns
+ * ("can only bind numbers, strings, bigints, buffers, and null"), so writes
+ * must pick the correct shape. Return type is `Date` because the shared schema
+ * is typed as the Postgres variant; for SQLite an ISO string is returned at
+ * runtime.
+ */
+function nowValue(): Date {
+  return IS_POSTGRES ? new Date() : (new Date().toISOString() as unknown as Date);
+}
 
 export interface NotebookWithCount extends Notebook {
   userId: string | null;
   sourceCount: number;
 }
 
-export async function getNotebooksForUser(userId: string | null): Promise<NotebookWithCount[]> {
+/**
+ * SQL-level tenant isolation for the notebooks list.
+ *
+ * A user sees exactly:
+ *  - notebooks they own (and that are not deleted), OR
+ *  - notebooks shared with an org they belong to
+ *    (`organization_id IN (:orgIds) AND visibility = 'org'`).
+ *
+ * The tenant filter is enforced inside the SQL WHERE clause — rows from other
+ * tenants are never fetched, so nothing can leak into application memory.
+ *
+ * Legacy public notebooks (`userId === null`) are visible to every
+ * authenticated user (read-only), preserving the original anonymous mode.
+ *
+ * @param userId The authenticated user's id, or `null` for anonymous visitors.
+ * @param orgIds The user's organization ids (from their memberships). Anonymous
+ *               visitors pass `[]` — they never see org-shared notebooks.
+ */
+export async function getNotebooksForUser(
+  userId: string | null,
+  orgIds: string[] = [],
+): Promise<NotebookWithCount[]> {
   const rows = await db
     .select({
       id: notebooks.id,
@@ -22,27 +57,43 @@ export async function getNotebooksForUser(userId: string | null): Promise<Notebo
     })
     .from(notebooks)
     .leftJoin(sources, eq(sources.notebookId, notebooks.id))
-    .where(isNull(notebooks.deletedAt))
+    .where(
+      and(
+        isNull(notebooks.deletedAt),
+        or(
+          userId !== null ? eq(notebooks.userId, userId) : undefined,
+          orgIds.length > 0
+            ? and(
+              inArray(notebooks.organizationId, orgIds),
+              eq(notebooks.visibility, "org")
+            )
+            : undefined,
+          isNull(notebooks.userId)
+        )
+      )
+    )
     .groupBy(notebooks.id)
     .orderBy(desc(notebooks.updatedAt));
 
-  return rows
-    // Public notebooks are visible to everyone; owned notebooks are visible
-    // only to their owner. Unauthenticated visitors (userId === null) only see
-    // public notebooks — never owned ones.
-    .filter((r) => r.userId === null || (userId !== null && r.userId === userId))
-    .map((r) => ({
-      ...r,
-      createdAt: typeof r.createdAt === "string" ? r.createdAt : (r.createdAt as Date).toISOString(),
-      updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : (r.updatedAt as Date).toISOString(),
-    }));
+  return rows.map((r) => ({
+    ...r,
+    createdAt: typeof r.createdAt === "string" ? r.createdAt : (r.createdAt as Date).toISOString(),
+    updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : (r.updatedAt as Date).toISOString(),
+  }));
 }
 
 /**
  * Returns notebooks that are currently in the trash (soft-deleted) and are
  * visible to the given user. Used by the trash/restore API.
+ *
+ * Trash is strictly personal: only notebooks owned by the user appear here.
+ * Org-shared notebooks and legacy public notebooks are NOT trashable by
+ * non-owners, so they never appear.
  */
-export async function getTrashedNotebooksForUser(userId: string | null): Promise<NotebookWithCount[]> {
+export async function getTrashedNotebooksForUser(
+  userId: string | null,
+  _orgIds: string[] = [],
+): Promise<NotebookWithCount[]> {
   const rows = await db
     .select({
       id: notebooks.id,
@@ -56,17 +107,20 @@ export async function getTrashedNotebooksForUser(userId: string | null): Promise
     })
     .from(notebooks)
     .leftJoin(sources, eq(sources.notebookId, notebooks.id))
-    .where(sql`${notebooks.deletedAt} IS NOT NULL`)
+    .where(
+      and(
+        sql`${notebooks.deletedAt} IS NOT NULL`,
+        userId !== null ? eq(notebooks.userId, userId) : sql`1 = 0`
+      )
+    )
     .groupBy(notebooks.id)
     .orderBy(desc(notebooks.updatedAt));
 
-  return rows
-    .filter((r) => r.userId === null || (userId !== null && r.userId === userId))
-    .map((r) => ({
-      ...r,
-      createdAt: typeof r.createdAt === "string" ? r.createdAt : (r.createdAt as Date).toISOString(),
-      updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : (r.updatedAt as Date).toISOString(),
-    }));
+  return rows.map((r) => ({
+    ...r,
+    createdAt: typeof r.createdAt === "string" ? r.createdAt : (r.createdAt as Date).toISOString(),
+    updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : (r.updatedAt as Date).toISOString(),
+  }));
 }
 
 export async function getNotebookById(id: string) {
@@ -78,6 +132,8 @@ export async function createNotebook(params: {
   title: string;
   emoji: string;
   userId?: string | null;
+  organizationId?: string | null;
+  visibility?: "private" | "org";
 }) {
   // Validate that the userId actually exists in the users table.
   // A stale JWT (e.g. after the database was reset) can carry an id that no
@@ -99,6 +155,8 @@ export async function createNotebook(params: {
       title: params.title,
       emoji: params.emoji,
       userId: resolvedUserId,
+      organizationId: params.organizationId ?? null,
+      visibility: params.visibility ?? "private",
     })
     .returning();
   return notebook;
@@ -107,7 +165,7 @@ export async function createNotebook(params: {
 export async function updateNotebook(id: string, data: { title?: string; emoji?: string; description?: string }) {
   const [notebook] = await db
     .update(notebooks)
-    .set({ ...data, updatedAt: new Date() })
+    .set({ ...data, updatedAt: nowValue() })
     .where(eq(notebooks.id, id))
     .returning();
   return notebook;
@@ -118,7 +176,7 @@ export async function updateNotebook(id: string, data: { title?: string; emoji?:
  * rows) remain in the database so it can be restored from the trash later.
  */
 export async function deleteNotebook(id: string) {
-  const now = new Date();
+  const now = nowValue();
   const [notebook] = await db
     .update(notebooks)
     .set({ deletedAt: now, updatedAt: now })
@@ -134,7 +192,7 @@ export async function deleteNotebook(id: string) {
 export async function restoreNotebook(id: string) {
   const [notebook] = await db
     .update(notebooks)
-    .set({ deletedAt: null, updatedAt: new Date() })
+    .set({ deletedAt: null, updatedAt: nowValue() })
     .where(eq(notebooks.id, id))
     .returning();
   return notebook || null;
@@ -149,5 +207,5 @@ export async function permanentlyDeleteNotebook(id: string) {
 }
 
 export async function touchNotebook(id: string) {
-  await db.update(notebooks).set({ updatedAt: new Date() }).where(eq(notebooks.id, id));
+  await db.update(notebooks).set({ updatedAt: nowValue() }).where(eq(notebooks.id, id));
 }

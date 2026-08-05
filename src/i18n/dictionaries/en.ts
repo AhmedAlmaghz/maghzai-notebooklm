@@ -61,6 +61,83 @@ const en = {
     logoutSuccess: "Signed out successfully",
     invalidCredentials: "Invalid email or password",
     emailExists: "This email is already registered",
+    loginForgotPassword: "Forgot your password?",
+    loginVerifyBanner: "Your email is not verified yet. Resend the verification link to unlock all features.",
+    loginResendVerification: "Resend verification link",
+    registerVerifyBanner: "Your account was created! We sent a verification link to your email. Please verify your email to unlock all features.",
+  },
+  authPages: {
+    forgotPasswordTitle: "Reset your password 🔑",
+    forgotPasswordSubtitle: "Enter your email and we'll send you a link to reset your password",
+    forgotPasswordEmailLabel: "Email",
+    forgotPasswordSubmit: "Send Reset Link",
+    forgotPasswordSuccessTitle: "Check your email",
+    forgotPasswordSuccessBody:
+      "If the account exists, we've sent a password reset link to your email. Please check your inbox (and spam folder).",
+    forgotPasswordBackToLogin: "Back to sign in",
+    resetPasswordTitle: "Reset your password",
+    resetPasswordSubtitle: "Choose a new password for your account",
+    resetPasswordNewLabel: "New password",
+    resetPasswordConfirmLabel: "Confirm new password",
+    resetPasswordSubmit: "Save New Password",
+    resetPasswordSuccessTitle: "Password reset successfully",
+    resetPasswordSuccessBody: "You can now sign in with your new password.",
+    resetPasswordInvalidTitle: "Link invalid or expired",
+    resetPasswordInvalidBody: "Sorry, this password reset link is invalid or has expired. Please request a new link.",
+    resetPasswordGoForgot: "Request a new link",
+    resetPasswordNoTokenTitle: "Missing link",
+    resetPasswordNoTokenBody:
+      "It looks like you opened this page without a link. Use the link sent to your email or request a new one.",
+    verifyEmailTitle: "Verify your email",
+    verifyEmailSubtitle: "We're verifying your email address",
+    verifyEmailVerifying: "Verifying your email...",
+    verifyEmailSuccessTitle: "Email verified 🎉",
+    verifyEmailSuccessBody: "Your account is now active. You can enjoy all of Bahhatha's features.",
+    verifyEmailGoDashboard: "Go to Dashboard",
+    verifyEmailInvalidTitle: "Link invalid or expired",
+    verifyEmailInvalidBody:
+      "Sorry, we couldn't verify your email with this link. Resend the verification link below.",
+    verifyEmailResendLabel: "Email",
+    verifyEmailResendSubmit: "Resend Verification Link",
+    verifyEmailResent: "Verification link sent. Check your email.",
+    profileTitle: "Profile",
+    profileAccountCard: "Account",
+    profileEmailVerified: "Verified",
+    profileEmailUnverified: "Unverified",
+    profileResendVerification: "Resend verification",
+    profileResendSent: "Verification link sent",
+    profileSecurityCard: "Security & Password",
+    profileCurrentPassword: "Current password",
+    profileNewPassword: "New password",
+    profileConfirmPassword: "Confirm new password",
+    profileSaveChanges: "Save Changes",
+    profileNameLabel: "Name",
+    profileRoleLabel: "Role",
+    profileOrgLabel: "Organization",
+    profileMemberSince: "Member since",
+    profilePasswordMismatch: "Passwords do not match",
+    profilePasswordMin: "New password must be at least 8 characters",
+    profileUpdated: "Profile updated successfully",
+    settingsTitle: "Settings",
+  },
+  authEmail: {
+    verifySubject: "Verify your email — Bahhatha",
+    verifyTitle: "Hi {{name}} 👋",
+    verifyBody:
+      "Thank you for creating your Bahhatha account! To verify your email address and unlock all features, click the button below.",
+    verifyCta: "Verify Email",
+    verifyFooter: "If you didn't request this, you can safely ignore this email.",
+    resetSubject: "Reset your password — Bahhatha",
+    resetTitle: "Reset your password",
+    resetBody:
+      "We received a request to reset the password for your Bahhatha account. Click the button below to choose a new password. This link expires in one hour.",
+    resetCta: "Reset Password",
+    resetFooter: "If you didn't request a password reset, you can safely ignore this email.",
+    expiresNote: "This link expires in 1 hour.",
+    supportNote: "If you run into any issues, please contact support.",
+    footerNote: "You're receiving this email because you have an account or requested an action on Bahhatha.",
+    hello: "Hello",
+    signOff: "The Bahhatha Team",
   },
   home: {
     heroWelcome: "Smart Research & Learning Platform",
@@ -315,6 +392,254 @@ const en = {
     lightMode: "Light Mode",
     darkMode: "Dark Mode",
     systemMode: "System preference",
+  },
+  landing: {
+    meta: {
+      title: "Bahhatha — Your Smart Research & Learning Assistant",
+      description:
+        "An all-in-one intelligent platform to organize your sources, chat with your documents, and generate summaries, mind maps and flashcards — inspired by NotebookLM.",
+    },
+    nav: {
+      features: "Features",
+      howItWorks: "How it works",
+      pricing: "Pricing",
+      faq: "FAQ",
+      login: "Sign In",
+      getStarted: "Get Started Free",
+      menu: "Menu",
+      closeMenu: "Close menu",
+    },
+    hero: {
+      badge: "A smart platform inspired by NotebookLM",
+      title: "Turn your documents into interactive knowledge",
+      titleHighlight: "interactive knowledge",
+      subtitle:
+        "Add your files, books, web links and YouTube videos, and let AI analyze them for you: source-backed chat, audio overviews, mind maps, flashcards and more.",
+      primaryCta: "Get Started Free",
+      secondaryCta: "Sign In",
+      trustedBy: "Trusted by thousands of researchers and students worldwide",
+      statsNotebooks: "Notebooks",
+      statsSources: "Analyzed sources",
+      statsUsers: "Active users",
+      statsLanguages: "Supported languages",
+    },
+    features: {
+      badge: "Features",
+      title: "Everything you need to study and research in one place",
+      subtitle:
+        "AI-powered tools designed to turn your sources into deep understanding and higher productivity.",
+      items: {
+        chat: {
+          title: "Source-backed chat",
+          description:
+            "Ask any question about your documents and get accurate answers with citations, plus the ability to expand answers from the web.",
+        },
+        podcast: {
+          title: "Audio overview",
+          description:
+            "Turn your documents into an interactive audio discussion with natural voices, so you can listen to your ideas on the go or while studying.",
+        },
+        mindmap: {
+          title: "Interactive mind maps",
+          description:
+            "Visualize concept relationships with interactive tree mind maps that help you grasp the full structure of any topic.",
+        },
+        quiz: {
+          title: "Quizzes & flashcards",
+          description:
+            "Generate short quizzes and 3D review flashcards automatically to measure your understanding and reinforce memory.",
+        },
+        sources: {
+          title: "Add any source",
+          description:
+            "PDF files, text, article links, YouTube videos, and even deep web search — all in one notebook.",
+        },
+        languages: {
+          title: "Fully Arabic & English",
+          description:
+            "A complete Arabic interface with full bilingual support, so you can study and research in the language that suits you.",
+        },
+      },
+    },
+    howItWorks: {
+      badge: "How it works",
+      title: "Three simple steps to get started",
+      subtitle: "From zero to a full interactive study experience in under a minute.",
+      steps: {
+        one: {
+          title: "Create your notebook",
+          description:
+            "Sign up for free and create a new research notebook for your topic or study project.",
+        },
+        two: {
+          title: "Add your sources",
+          description:
+            "Upload PDF files, paste text, add article links or YouTube videos, and let Bahhatha analyze them instantly.",
+        },
+        three: {
+          title: "Study & interact",
+          description:
+            "Ask questions, listen to audio summaries, generate mind maps and quizzes, and share your knowledge.",
+        },
+      },
+    },
+    testimonials: {
+      badge: "Testimonials",
+      title: "What people say about Bahhatha",
+      subtitle: "Real stories from students, researchers and professionals who changed the way they study.",
+      items: {
+        one: {
+          quote:
+            "Bahhatha completely changed how I study. I upload my lecture files and get summaries, mind maps and ready quizzes in minutes.",
+          name: "Sarah Al-Mohammadi",
+          role: "Master's Student — King Saud University",
+        },
+        two: {
+          quote:
+            "As a research analyst, I need to read hundreds of pages weekly. The audio overview and source-backed chat saved me an enormous amount of time.",
+          name: "Ahmed Al-Omari",
+          role: "Research Analyst",
+        },
+        three: {
+          quote:
+            "I use Bahhatha to prepare my lessons. The flashcards and quick quizzes made my students more engaged and focused.",
+          name: "Dr. Khaled Al-Shammari",
+          role: "University Lecturer",
+        },
+      },
+    },
+    pricing: {
+      badge: "Pricing",
+      title: "Plans for everyone",
+      subtitle: "Start free and upgrade when you're ready. No credit card required.",
+      monthly: "per month",
+      popular: "Most popular",
+      plans: {
+        free: {
+          name: "Free",
+          description: "For those who want to get started and explore the platform",
+          price: "0",
+          features: {
+            one: "2 active research notebooks",
+            two: "Up to 20 sources",
+            three: "Basic chat with sources",
+            four: "Summaries & flashcards",
+          },
+          cta: "Get Started Free",
+        },
+        pro: {
+          name: "Pro",
+          description: "For serious researchers and students",
+          price: "49",
+          features: {
+            one: "Unlimited research notebooks",
+            two: "Unlimited sources",
+            three: "Audio overview & expanded chat",
+            four: "Mind maps & presentations",
+            five: "Export in multiple formats",
+          },
+          cta: "Try Free for 14 Days",
+        },
+        org: {
+          name: "Organization",
+          description: "For teams and educational institutions",
+          price: "149",
+          features: {
+            one: "Everything in Pro",
+            two: "Team collaboration",
+            three: "Organized workspaces",
+            four: "Priority support",
+          },
+          cta: "Contact Us",
+        },
+      },
+    },
+    faq: {
+      badge: "FAQ",
+      title: "Have a question? We have answers",
+      subtitle: "We've gathered the most common questions about Bahhatha.",
+      items: {
+        one: {
+          question: "What types of sources can I add?",
+          answer:
+            "You can add PDF files and text documents (TXT, MD) up to 20MB, paste text directly, add article links and YouTube videos, and use deep web search to automatically collect the best sources.",
+        },
+        two: {
+          question: "Is my data safe and private?",
+          answer:
+            "Yes. Your notebooks and sources are private to you only, authentication uses secure sessions, and we never share your data with third parties for marketing purposes.",
+        },
+        three: {
+          question: "Does the platform fully support Arabic?",
+          answer:
+            "Absolutely! Bahhatha has a fully Arabic interface with complete English support too, and you can switch between both languages with one click at any time.",
+        },
+        four: {
+          question: "Can I use Bahhatha for free?",
+          answer:
+            "Yes, the free plan is available forever and includes two notebooks and enough sources to try out. You can upgrade later when you need more features.",
+        },
+        five: {
+          question: "Is the audio overview available on all plans?",
+          answer:
+            "The audio overview is available on paid plans, while the free plan includes basic summaries and flashcards.",
+        },
+        six: {
+          question: "Can I export my notes and chats?",
+          answer:
+            "Yes, you can export notes as Markdown and export chats as PDF, with clean printing options for studying.",
+        },
+      },
+    },
+    cta: {
+      title: "Ready to transform how you study and research?",
+      subtitle:
+        "Join thousands of users who replaced traditional notes with smart, interactive knowledge.",
+      primaryCta: "Get Started Free Now",
+      secondaryCta: "Sign In",
+    },
+    footer: {
+      tagline: "Your smart research assistant for analyzing and chatting with your documents.",
+      product: "Product",
+      company: "Company",
+      resources: "Resources",
+      legal: "Legal",
+      productLinks: {
+        features: "Features",
+        pricing: "Pricing",
+        faq: "FAQ",
+        changelog: "Changelog",
+      },
+      companyLinks: {
+        about: "About Bahhatha",
+        contact: "Contact Us",
+        privacy: "Privacy Policy",
+        terms: "Terms of Service",
+      },
+      resourcesLinks: {
+        blog: "Blog",
+        help: "Help Center",
+        docs: "Documentation",
+        status: "Service Status",
+      },
+      legalLinks: {
+        privacy: "Privacy Policy",
+        terms: "Terms of Service",
+        cookies: "Cookies",
+      },
+      rights: "All rights reserved.",
+    },
+  },
+  org: {
+    orgNameLabel: "Organization name",
+    membersLabel: "Members",
+    orgSettingsTitle: "Organization settings",
+    personalOrgName: "Your personal workspace",
+    roleLabels: {
+      owner: "Owner",
+      admin: "Admin",
+      member: "Member",
+    },
   },
 } as const;
 

@@ -9,9 +9,10 @@ import type { ReactNode } from "react";
 interface AuthLayoutProps {
   children: ReactNode;
   subtitle: string;
+  title?: string;
 }
 
-export default function AuthLayout({ children, subtitle }: AuthLayoutProps) {
+export default function AuthLayout({ children, subtitle, title }: AuthLayoutProps) {
   const { t } = useI18n();
 
   return (
@@ -34,7 +35,7 @@ export default function AuthLayout({ children, subtitle }: AuthLayoutProps) {
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">{t.auth.welcomeBack}</h1>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">{title || t.auth.welcomeBack}</h1>
             <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
           </div>
           {children}

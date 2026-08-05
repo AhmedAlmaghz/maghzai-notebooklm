@@ -53,13 +53,63 @@ async function initPostgres() {
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) NOT NULL UNIQUE,
       password TEXT NOT NULL,
+      email_verified_at TIMESTAMPTZ,
+      role VARCHAR(20) NOT NULL DEFAULT 'user',
+      refresh_token_version INTEGER NOT NULL DEFAULT 0,
+      organization_id TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS email_verifications (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      revoked_at TIMESTAMPTZ,
+      user_agent TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS organizations (
+      id TEXT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS memberships (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role VARCHAR(20) NOT NULL DEFAULT 'member',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT memberships_organization_user_unique UNIQUE (organization_id, user_id)
     );
 
     CREATE TABLE IF NOT EXISTS notebooks (
       id TEXT PRIMARY KEY,
       user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+      organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL,
+      visibility VARCHAR(20) NOT NULL DEFAULT 'private',
       title VARCHAR(255) NOT NULL DEFAULT 'دفتر بحث بلا عنوان',
       emoji VARCHAR(8) NOT NULL DEFAULT '📓',
       description TEXT,
@@ -111,6 +161,16 @@ async function initPostgres() {
 
     -- Soft-delete migration for existing databases.
     ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+    -- Auth migrations for existing databases (idempotent).
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token_version INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id TEXT;
+
+    -- Multi-tenant isolation migrations for existing databases (idempotent).
+    ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS organization_id TEXT;
+    ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) NOT NULL DEFAULT 'private';
   `);
 
   return drizzle(pool, { schema: schemaPg });
@@ -142,13 +202,63 @@ function initSqlite() {
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
+      email_verified_at TEXT,
+      role TEXT NOT NULL DEFAULT 'user',
+      refresh_token_version INTEGER NOT NULL DEFAULT 0,
+      organization_id TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS email_verifications (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT,
+      user_agent TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS organizations (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS memberships (
+      id TEXT PRIMARY KEY,
+      organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL DEFAULT 'member',
+      created_at TEXT NOT NULL,
+      UNIQUE (organization_id, user_id)
     );
 
     CREATE TABLE IF NOT EXISTS notebooks (
       id TEXT PRIMARY KEY,
       user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+      organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL,
+      visibility TEXT NOT NULL DEFAULT 'private',
       title TEXT NOT NULL DEFAULT 'دفتر بحث بلا عنوان',
       emoji TEXT NOT NULL DEFAULT '📓',
       description TEXT,
@@ -201,6 +311,24 @@ function initSqlite() {
     -- Soft-delete migration for existing databases.
     ALTER TABLE notebooks ADD COLUMN deleted_at TEXT;
   `);
+
+  // SQLite does not support "ADD COLUMN IF NOT EXISTS", so check the existing
+  // columns via PRAGMA table_info for the specific table being altered and
+  // only add missing ones (idempotent).
+  const addColumn = (table: string, column: string, ddl: string) => {
+    const cols = new Set(
+      (sqlite.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name)
+    );
+    if (!cols.has(column)) {
+      sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl};`);
+    }
+  };
+  addColumn("users", "email_verified_at", "email_verified_at TEXT");
+  addColumn("users", "role", "role TEXT NOT NULL DEFAULT 'user'");
+  addColumn("users", "refresh_token_version", "refresh_token_version INTEGER NOT NULL DEFAULT 0");
+  addColumn("users", "organization_id", "organization_id TEXT");
+  addColumn("notebooks", "organization_id", "organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL");
+  addColumn("notebooks", "visibility", "visibility TEXT NOT NULL DEFAULT 'private'");
 
   return drizzle(sqlite, { schema: schemaSqlite }) as Awaited<ReturnType<typeof initPostgres>>;
 }
