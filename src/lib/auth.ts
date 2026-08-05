@@ -32,7 +32,18 @@ function resolveJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-const JWT_SECRET = resolveJwtSecret();
+// Resolve lazily, not at module scope: `next build` imports this module with
+// NODE_ENV=production and no JWT_SECRET set, but signing/verifying only happens
+// at request time. The FIRST token operation still throws when the secret is
+// missing/weak in production — the security posture is unchanged.
+let cachedSecret: Uint8Array | undefined;
+
+function getJwtSecret(): Uint8Array {
+  if (cachedSecret === undefined) {
+    cachedSecret = resolveJwtSecret();
+  }
+  return cachedSecret;
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -117,7 +128,7 @@ export async function createAccessToken(user: SessionUser): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${ACCESS_TOKEN_TTL_SECONDS}s`)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 // ─── Refresh token (opaque, stored hashed in DB, delivered via cookie) ───────
@@ -130,14 +141,14 @@ export async function createRefreshToken(userId: string, refreshTokenVersion: nu
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${REFRESH_TOKEN_TTL_SECONDS}s`)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifyRefreshToken(
   rawToken: string
 ): Promise<{ userId: string; jti: string; rv: number } | null> {
   try {
-    const { payload } = await jwtVerify(rawToken, JWT_SECRET, {
+    const { payload } = await jwtVerify(rawToken, getJwtSecret(), {
       algorithms: ["HS256"],
     });
     if (payload.type !== "refresh" || !payload.sub || !payload.jti) return null;
@@ -170,7 +181,7 @@ export async function createToken(payload: Pick<UserPayload, "id" | "name" | "em
  */
 export async function verifyToken(token: string): Promise<UserPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, { algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(token, getJwtSecret(), { algorithms: ["HS256"] });
     if (payload.type && payload.type !== "access") return null;
     return {
       id: (payload.sub as string) ?? (payload.id as string),

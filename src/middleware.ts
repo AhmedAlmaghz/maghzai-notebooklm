@@ -90,7 +90,17 @@ function resolveJwtSecret(): Uint8Array | null {
   return new TextEncoder().encode(secret);
 }
 
-const JWT_SECRET = resolveJwtSecret();
+// Resolve lazily, never at module scope: the middleware bundle must build even
+// when JWT_SECRET is absent (a missing/weak secret only denies routes at
+// runtime). Memoized so the production "DENIED" error log fires at most once.
+let cachedSecret: Uint8Array | null | undefined;
+
+function getJwtSecret(): Uint8Array | null {
+  if (cachedSecret === undefined) {
+    cachedSecret = resolveJwtSecret();
+  }
+  return cachedSecret;
+}
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
@@ -103,9 +113,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // 1. Verify the access JWT (HS256). Missing/expired/invalid is simply "not
   //    access-valid"; the refresh cookie may still let the request through.
   let accessValid = false;
-  if (accessToken && JWT_SECRET) {
+  const secret = getJwtSecret();
+  if (accessToken && secret) {
     try {
-      const { payload } = await jwtVerify(accessToken, JWT_SECRET, {
+      const { payload } = await jwtVerify(accessToken, secret, {
         algorithms: ["HS256"],
       });
       // Same semantics as verifyToken() in src/lib/auth.ts: a `type` claim of
