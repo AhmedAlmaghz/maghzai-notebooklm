@@ -14,9 +14,6 @@ const nextConfig: NextConfig = {
     "pdfjs-dist",
     "@napi-rs/canvas",
   ],
-
-  // Required to silence the Turbopack/webpack config mismatch error in Next.js 16
-  turbopack: {},
 };
 
 export default nextConfig;

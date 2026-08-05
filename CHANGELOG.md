@@ -21,6 +21,14 @@
   - السبب: ذاكرة تخزين مؤقتة قديمة (`.next`) تحمل مساراً خاطئاً لمجلد المشروع.
   - الحل: مسح ذاكرة التخزين المؤقتة `.next` و `node_modules/.cache` وإعادة البناء من جديد.
   - النتيجة: اكتمل البناء بنجاح (Compiled successfully in 4.4min، TypeScript في 112s).
+- إصلاح خطأ `Can't resolve 'tailwindcss' in 'C:\Users\AbuEmad\Downloads'` أثناء تشغيل `npm run dev` (Turbopack).
+  - السبب: اسم مجلد المشروع يحتوي على مسافات وأقواس (`build-notebooklm-style-application (1)`)، فيقوم مُحلِّل Turbopack بقطع مسار المشروع عند أول مسافة/قوس، فيصعد إلى مجلد `Downloads` ثم يفشل في إيجاد `node_modules/tailwindcss` (وإن كان البناء الإنتاجي `next build` ينجح لأن مساره يُشتق بشكل مختلف).
+  - الحل: تمرير المسار المطلق للجذر إلى إضافة `@tailwindcss/postcss` عبر الخيار `base` في `postcss.config.mjs` (محسوب من `import.meta.url`)، فيستخدم الإضافة المسار الصحيح لمسح المرشحين (`@source`) وحلّ `@import "tailwindcss"` بدلاً من المسار المقطوع.
+  - النتيجة: اختفى الخطأ من خادم التطوير، وعادت `npm run dev` تعمل في هذا المجلد دون الحاجة إلى إعادة تسمية المجلد أو التبديل إلى `--webpack`.
+- ترحيل `src/middleware.ts` إلى `src/proxy.ts` (إهمال Next.js 16 لقاعدة `middleware`).
+  - السبب: Next.js 16 أوقف قاعدة `middleware` وأطلق بديلها `proxy` (نفس فكرة الحارس الشامل للروابط، لكن على بيئة تشغيل Node.js افتراضياً بدلاً من Edge). كان `npm run dev` يطبع تحذير الإهمال في كل تشغيل.
+  - الحل: إنشاء `src/proxy.ts` بنفس منطق `src/middleware.ts` حرفياً (نفس ثوابت الكوكيز، نفس تصنيف الروابط، نفس `resolveJwtSecret()` الكسول، نفس `config.matcher`)، مع تصدير الدالة باسم `proxy` بدلاً من `middleware`، ثم حذف `src/middleware.ts`.
+  - النتيجة: اختفى تحذير الإهمال، وأظهر `next build` السطر `ƒ Proxy (Middleware)` في جدول الروابط، ولا تزال حماية الصفحات والواجهات تعمل: `GET /notebook/test123` (بدون جلسة) → `307` إلى `/login?next=%2Fnotebook%2Ftest123`، و`GET /api/notebooks` (بدون جلسة) → `401 Unauthorized`.
 
 ---
 

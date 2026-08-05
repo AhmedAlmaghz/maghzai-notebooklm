@@ -4,13 +4,18 @@ import { jwtVerify } from "jose";
 /**
  * Global route protection for بحّاثة / Bahhatha.
  *
- * Runs on the Edge runtime (Next.js middleware default). This file must stay
- * fully self-contained: it MUST NOT import from `@/lib/*` or `@/db/*` because
- * those pull in Node-only modules (better-sqlite3, pg, bcryptjs, nodemailer).
- * It only uses `jose` (edge-compatible) + `process.env`.
+ * Next.js 16 renamed the `middleware` convention to `proxy`. The file must
+ * live at `src/proxy.ts` and export a function named `proxy` (or `default`).
+ * The runtime is Node.js (not Edge) — see
+ * https://nextjs.org/docs/messages/middleware-to-proxy for the migration guide.
+ *
+ * This file must stay fully self-contained: it MUST NOT import from
+ * `@/lib/*` or `@/db/*` because those pull in Node-only modules
+ * (better-sqlite3, pg, bcryptjs, nodemailer). It only uses `jose`
+ * (edge-compatible) + `process.env`.
  *
  * Design notes:
- * - The middleware is the *UX gate*, not the sole security boundary. Route
+ * - The proxy is the *UX gate*, not the sole security boundary. Route
  *   handlers and server components still enforce real authorization
  *   (`requireNotebookAccess`, `getCurrentUser`, DB checks).
  * - The 15-minute access JWT frequently expires while a 30-day refresh cookie
@@ -21,7 +26,7 @@ import { jwtVerify } from "jose";
  * - In production, a missing/weak JWT_SECRET denies every protected route
  *   (never allow). In development we replicate the EXACT dev-only fallback
  *   secret from `resolveJwtSecret()` in src/lib/auth.ts so dev tokens verify
- *   consistently between the middleware and the Node runtime.
+ *   consistently between the proxy and the Node runtime.
  */
 
 const ACCESS_COOKIE = "nblm_session";
@@ -46,7 +51,7 @@ function isPathMatch(pathname: string, pathOrPrefix: string): boolean {
 }
 
 function classifyRoute(pathname: string): RouteKind {
-  // Any `/api/*` path that reaches the middleware is protected: the matcher
+  // Any `/api/*` path that reaches the proxy is protected: the matcher
   // below already excluded /api/auth/* and /api/health. Currently that means
   // /api/notebooks* and /api/users/me (plus anything added later).
   if (pathname.startsWith("/api/")) return "protectedApi";
@@ -67,7 +72,7 @@ function classifyRoute(pathname: string): RouteKind {
 // ─── JWT secret resolution (parity with src/lib/auth.ts) ─────────────────────
 
 /**
- * Mirrors `resolveJwtSecret()` from src/lib/auth.ts so the middleware and the
+ * Mirrors `resolveJwtSecret()` from src/lib/auth.ts so the proxy and the
  * Node runtime agree on the signing/verification key — including the dev-only
  * fallback. Returns `null` in production when the secret is missing/weak so
  * protected routes are denied rather than accidentally allowed.
@@ -77,7 +82,7 @@ function resolveJwtSecret(): Uint8Array | null {
   if (!secret || secret.length < 32) {
     if (process.env.NODE_ENV === "production") {
       console.error(
-        "[middleware] JWT_SECRET is not set (or is too short). Protected routes are DENIED."
+        "[proxy] JWT_SECRET is not set (or is too short). Protected routes are DENIED."
       );
       return null;
     }
@@ -90,7 +95,7 @@ function resolveJwtSecret(): Uint8Array | null {
   return new TextEncoder().encode(secret);
 }
 
-// Resolve lazily, never at module scope: the middleware bundle must build even
+// Resolve lazily, never at module scope: the proxy bundle must build even
 // when JWT_SECRET is absent (a missing/weak secret only denies routes at
 // runtime). Memoized so the production "DENIED" error log fires at most once.
 let cachedSecret: Uint8Array | null | undefined;
@@ -102,9 +107,9 @@ function getJwtSecret(): Uint8Array | null {
   return cachedSecret;
 }
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
+// ─── Proxy ────────────────────────────────────────────────────────────────────
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
@@ -149,7 +154,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   // Access token missing/expired but a refresh cookie exists → let it through.
   // The server-side `getCurrentUser()` refresh fallback and the client
-  // `/api/auth/refresh` bootstrap perform the silent rotation. Middleware is
+  // `/api/auth/refresh` bootstrap perform the silent rotation. The proxy is
   // the UX gate, not the sole security boundary.
   if (refreshToken) {
     return NextResponse.next();
