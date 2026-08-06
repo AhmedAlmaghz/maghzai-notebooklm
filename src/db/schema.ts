@@ -7,6 +7,9 @@ const dbUrl = (process.env.DATABASE_URL || "").toLowerCase();
 export const IS_POSTGRES = driver === "postgres" || (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://"));
 
 export const users = IS_POSTGRES ? schemaPg.users : (schemaSqlite.users as unknown as typeof schemaPg.users);
+export const oauthAccounts = IS_POSTGRES
+    ? schemaPg.oauthAccounts
+    : (schemaSqlite.oauthAccounts as unknown as typeof schemaPg.oauthAccounts);
 export const emailVerifications = IS_POSTGRES
     ? schemaPg.emailVerifications
     : (schemaSqlite.emailVerifications as unknown as typeof schemaPg.emailVerifications);

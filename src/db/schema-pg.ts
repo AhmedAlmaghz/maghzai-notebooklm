@@ -18,7 +18,10 @@ export const users = pgTable("users", {
   id: id(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  password: text("password").notNull(),
+  // Nullable: OAuth-only users (e.g. Google) have no password.
+  password: text("password"),
+  // Profile picture URL (from OAuth provider, optional).
+  image: text("image"),
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   role: varchar("role", { length: 20 }).notNull().default("user"),
   refreshTokenVersion: integer("refresh_token_version").notNull().default(0),
@@ -26,6 +29,30 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Links an external OAuth provider account (Google, …) to a local user.
+ * One user can have multiple provider links (e.g. Google + GitHub).
+ * The (provider, providerAccountId) pair is unique.
+ */
+export const oauthAccounts = pgTable(
+  "oauth_accounts",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // "google" | "github" | …
+    provider: varchar("provider", { length: 32 }).notNull(),
+    // The provider's stable user id (e.g. Google's `sub` claim).
+    providerAccountId: varchar("provider_account_id", { length: 255 }).notNull(),
+    // Optional cached profile data from the provider.
+    providerEmail: varchar("provider_email", { length: 255 }),
+    providerName: varchar("provider_name", { length: 255 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("oauth_accounts_provider_unique").on(t.provider, t.providerAccountId)]
+);
 
 export const emailVerifications = pgTable("email_verifications", {
   id: id(),
@@ -158,6 +185,14 @@ export const notes = pgTable("notes", {
 export const usersRelations = relations(users, ({ many }) => ({
   notebooks: many(notebooks),
   memberships: many(memberships),
+  oauthAccounts: many(oauthAccounts),
+}));
+
+export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [oauthAccounts.userId],
+    references: [users.id],
+  }),
 }));
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({

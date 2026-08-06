@@ -11,8 +11,11 @@ import { checkRateLimit } from "@/lib/rate-limit";
  * Body: { email, password }
  *
  * Rate-limited to 10/15-minutes per IP. Establishes a full session (access +
- * refresh + CSRF cookies). Adds an additive `requiresVerification` flag on the
- * response when the email is not yet verified — existing clients ignore it.
+ * refresh + CSRF cookies).
+ *
+ * NOTE: Email verification is currently DISABLED. The `requiresVerification`
+ * flag is no longer surfaced on the response. The verification flow is kept
+ * in the codebase and can be re-enabled later.
  */
 export async function POST(req: Request) {
   const { result, retryAfterSeconds } = checkRateLimit(req, "auth:login", {
@@ -38,6 +41,14 @@ export async function POST(req: Request) {
     const [user] = await db.select().from(users).where(eq(users.email, cleanEmail));
     if (!user) {
       return NextResponse.json({ error: "البريد الإلكتروني أو كلمة المرور غير صحيحة" }, { status: 400 });
+    }
+
+    // OAuth-only users (e.g. signed up via Google) have no password.
+    if (!user.password) {
+      return NextResponse.json(
+        { error: "هذا الحساب يستخدم تسجيل الدخول عبر جوجل. يرجى استخدام زر جوجل." },
+        { status: 400 }
+      );
     }
 
     const isValid = await verifyPassword(password, user.password);
@@ -68,9 +79,7 @@ export async function POST(req: Request) {
       { refreshTokenVersion: user.refreshTokenVersion, userAgent: req.headers.get("user-agent") }
     );
 
-    const requiresVerification = user.emailVerifiedAt == null;
-
-    return NextResponse.json({ user: payload, requiresVerification });
+    return NextResponse.json({ user: payload });
   } catch (error) {
     console.error("Login Error:", error);
     return NextResponse.json({ error: "حدث خطأ أثناء تسجيل الدخول" }, { status: 500 });

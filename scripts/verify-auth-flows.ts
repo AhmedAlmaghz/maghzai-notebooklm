@@ -204,7 +204,7 @@ async function main() {
 
   // Verify the password hash was NOT changed.
   const [userRowWrongPw] = await db.select().from(users).where(eq(users.email, EMAIL));
-  const oldHashStillValid = await authMod.verifyPassword(PASSWORD_OLD, userRowWrongPw.password);
+  const oldHashStillValid = await authMod.verifyPassword(PASSWORD_OLD, userRowWrongPw.password!);
   check(oldHashStillValid, "password hash unchanged after failed attempt (old password still verifies)");
 
   console.log("=== 4. Password change — CORRECT current password ===");
@@ -229,7 +229,7 @@ async function main() {
 
   // Password now verifies against the NEW password.
   const [userRowAfter] = await db.select().from(users).where(eq(users.email, EMAIL));
-  const newHashValid = await authMod.verifyPassword(PASSWORD_NEW, userRowAfter.password);
+  const newHashValid = await authMod.verifyPassword(PASSWORD_NEW, userRowAfter.password!);
   check(newHashValid, "new password verifies after change");
 
   // refresh_token_version must have been bumped.

@@ -15,7 +15,10 @@ export const users = sqliteTable("users", {
   id: id(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
+  // Nullable: OAuth-only users (e.g. Google) have no password.
+  password: text("password"),
+  // Profile picture URL (from OAuth provider, optional).
+  image: text("image"),
   emailVerifiedAt: text("email_verified_at"),
   role: text("role").notNull().default("user"),
   refreshTokenVersion: integer("refresh_token_version").notNull().default(0),
@@ -23,6 +26,30 @@ export const users = sqliteTable("users", {
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
+
+/**
+ * Links an external OAuth provider account (Google, …) to a local user.
+ * One user can have multiple provider links (e.g. Google + GitHub).
+ * The (provider, providerAccountId) pair is unique.
+ */
+export const oauthAccounts = sqliteTable(
+  "oauth_accounts",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // "google" | "github" | …
+    provider: text("provider").notNull(),
+    // The provider's stable user id (e.g. Google's `sub` claim).
+    providerAccountId: text("provider_account_id").notNull(),
+    // Optional cached profile data from the provider.
+    providerEmail: text("provider_email"),
+    providerName: text("provider_name"),
+    createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex("oauth_accounts_provider_unique").on(t.provider, t.providerAccountId)]
+);
 
 export const emailVerifications = sqliteTable("email_verifications", {
   id: id(),
@@ -153,6 +180,14 @@ export const notes = sqliteTable("notes", {
 export const usersRelations = relations(users, ({ many }) => ({
   notebooks: many(notebooks),
   memberships: many(memberships),
+  oauthAccounts: many(oauthAccounts),
+}));
+
+export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [oauthAccounts.userId],
+    references: [users.id],
+  }),
 }));
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({

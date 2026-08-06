@@ -47,18 +47,41 @@ async function initPostgres() {
   }
 
   // Auto-create tables when the app first boots.
-  await pool.query(`
+  //
+  // During `next build` (and serverless cold starts) multiple worker processes
+  // call this at the same time. Postgres' CREATE TABLE IF NOT EXISTS is NOT
+  // race-safe for brand-new tables (concurrent type creation collides in
+  // pg_type), so we serialize the whole DDL block behind a session-level
+  // advisory lock held on a dedicated client.
+  const client = await pool.connect();
+  try {
+    await client.query("SELECT pg_advisory_lock(83749021)");
+    await client.query(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) NOT NULL UNIQUE,
-      password TEXT NOT NULL,
+      -- Nullable: OAuth-only users (e.g. Google) have no password.
+      password TEXT,
+      -- Profile picture URL (from OAuth provider, optional).
+      image TEXT,
       email_verified_at TIMESTAMPTZ,
       role VARCHAR(20) NOT NULL DEFAULT 'user',
       refresh_token_version INTEGER NOT NULL DEFAULT 0,
       organization_id TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS oauth_accounts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider VARCHAR(32) NOT NULL,
+      provider_account_id VARCHAR(255) NOT NULL,
+      provider_email VARCHAR(255),
+      provider_name VARCHAR(255),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      CONSTRAINT oauth_accounts_provider_unique UNIQUE (provider, provider_account_id)
     );
 
     CREATE TABLE IF NOT EXISTS email_verifications (
@@ -167,11 +190,19 @@ async function initPostgres() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token_version INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS image TEXT;
+    -- Allow NULL passwords for OAuth-only users (no-op if already nullable).
+    ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
 
     -- Multi-tenant isolation migrations for existing databases (idempotent).
     ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS organization_id TEXT;
     ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) NOT NULL DEFAULT 'private';
-  `);
+    `);
+  } finally {
+    // Always release the advisory lock and the dedicated client, even on error.
+    await client.query("SELECT pg_advisory_unlock(83749021)").catch(() => { });
+    client.release();
+  }
 
   return drizzle(pool, { schema: schemaPg });
 }
@@ -201,13 +232,27 @@ function initSqlite() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL,
+      -- Nullable: OAuth-only users (e.g. Google) have no password.
+      password TEXT,
+      -- Profile picture URL (from OAuth provider, optional).
+      image TEXT,
       email_verified_at TEXT,
       role TEXT NOT NULL DEFAULT 'user',
       refresh_token_version INTEGER NOT NULL DEFAULT 0,
       organization_id TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS oauth_accounts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      provider_account_id TEXT NOT NULL,
+      provider_email TEXT,
+      provider_name TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (provider, provider_account_id)
     );
 
     CREATE TABLE IF NOT EXISTS email_verifications (
@@ -327,8 +372,47 @@ function initSqlite() {
   addColumn("users", "role", "role TEXT NOT NULL DEFAULT 'user'");
   addColumn("users", "refresh_token_version", "refresh_token_version INTEGER NOT NULL DEFAULT 0");
   addColumn("users", "organization_id", "organization_id TEXT");
+  addColumn("users", "image", "image TEXT");
   addColumn("notebooks", "organization_id", "organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL");
   addColumn("notebooks", "visibility", "visibility TEXT NOT NULL DEFAULT 'private'");
+
+  // Migration: SQLite cannot drop a NOT NULL constraint in place, so rebuild
+  // the users table when the password column is still NOT NULL (existing DBs
+  // created before Google OAuth support).
+  const userCols = sqlite.pragma("table_info(users)") as {
+    name: string;
+    notnull: number;
+  }[];
+  const passwordCol = userCols.find((c) => c.name === "password");
+  if (passwordCol && passwordCol.notnull === 1) {
+    sqlite.exec(`
+      BEGIN;
+      CREATE TABLE users_oauth (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT,
+        image TEXT,
+        email_verified_at TEXT,
+        role TEXT NOT NULL DEFAULT 'user',
+        refresh_token_version INTEGER NOT NULL DEFAULT 0,
+        organization_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      INSERT INTO users_oauth (
+        id, name, email, password, image, email_verified_at,
+        role, refresh_token_version, organization_id, created_at, updated_at
+      )
+      SELECT
+        id, name, email, password, NULL, email_verified_at,
+        role, refresh_token_version, organization_id, created_at, updated_at
+      FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_oauth RENAME TO users;
+      COMMIT;
+    `);
+  }
 
   return drizzle(sqlite, { schema: schemaSqlite }) as Awaited<ReturnType<typeof initPostgres>>;
 }

@@ -48,8 +48,8 @@ export async function PATCH(req: Request) {
         // then revoke every outstanding session so other devices must re-login.
         const wantsPasswordChange = currentPassword !== "" || newPassword !== "";
         if (wantsPasswordChange) {
-            if (!currentPassword || !newPassword) {
-                return NextResponse.json({ error: "كلمة المرور الحالية والجديدة مطلوبتان" }, { status: 400 });
+            if (!newPassword) {
+                return NextResponse.json({ error: "كلمة المرور الجديدة مطلوبة" }, { status: 400 });
             }
             if (newPassword.length < 8) {
                 return NextResponse.json({ error: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" }, { status: 400 });
@@ -60,9 +60,17 @@ export async function PATCH(req: Request) {
                 return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
             }
 
-            const valid = await verifyPassword(currentPassword, row.password);
-            if (!valid) {
-                return NextResponse.json({ error: "كلمة المرور الحالية غير صحيحة" }, { status: 400 });
+            // OAuth-only users (e.g. signed up via Google) have no stored
+            // password, so they can set one directly without a "current"
+            // password. Password-based users must still verify the current one.
+            if (row.password) {
+                if (!currentPassword) {
+                    return NextResponse.json({ error: "كلمة المرور الحالية مطلوبة" }, { status: 400 });
+                }
+                const valid = await verifyPassword(currentPassword, row.password);
+                if (!valid) {
+                    return NextResponse.json({ error: "كلمة المرور الحالية غير صحيحة" }, { status: 400 });
+                }
             }
 
             const hashedPassword = await hashPassword(newPassword);
