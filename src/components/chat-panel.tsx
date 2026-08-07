@@ -308,7 +308,7 @@ export default function ChatPanel({
         }`}
     >
       {/* Panel Top Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white/50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900/50 backdrop-blur-sm">
+      <div className="relative z-[60] flex items-center justify-between border-b border-slate-200 bg-white/50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <div className="grid h-6 w-6 place-items-center rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
             <MessageCircle size={14} />

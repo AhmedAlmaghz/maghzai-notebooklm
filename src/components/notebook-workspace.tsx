@@ -226,7 +226,7 @@ export default function NotebookWorkspace({
   return (
     <div className="flex h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
       {/* Top Navbar Header */}
-      <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/90 backdrop-blur-md">
+      <header className="relative z-[60] flex items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/90 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
           <a
             href="/"
