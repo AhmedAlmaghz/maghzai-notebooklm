@@ -70,6 +70,10 @@ export async function searchChunks(
 
   const sourceFilter = buildSourceFilter(sourceIds);
 
+  // Over-fetch so we can guarantee at least one chunk per selected source
+  // (round-robin coverage) before trimming to the requested limit.
+  const fetchLimit = Math.max(limit * 4, 32);
+
   if (IS_POSTGRES) {
     const tsQuery = buildTsQuery(safeQuery);
     if (!tsQuery) return [];
@@ -83,9 +87,9 @@ export async function searchChunks(
         AND to_tsvector('simple', sc.content) @@ to_tsquery('simple', ${tsQuery})
         ${sourceFilter}
       ORDER BY rank DESC
-      LIMIT ${limit}
+      LIMIT ${fetchLimit}
     `);
-    return result.rows.map(mapRow);
+    return applyRoundRobin(result.rows.map(mapRow), limit);
   }
 
   // SQLite: token-based LIKE matching
@@ -105,9 +109,34 @@ export async function searchChunks(
       AND (${likeConditions})
       ${sourceFilter}
     ORDER BY sc.created_at ASC
-    LIMIT ${limit}
+    LIMIT ${fetchLimit}
   `);
-  return result.rows.map(mapRow);
+  return applyRoundRobin(result.rows.map(mapRow), limit);
+}
+
+/**
+ * Round-robin coverage: ensure the best chunk of EACH distinct source is
+ * included first, then fill remaining slots by rank up to the limit.
+ * This prevents a single high-ranking source from monopolizing the context.
+ */
+function applyRoundRobin(chunks: RetrievedChunk[], limit: number): RetrievedChunk[] {
+  if (chunks.length === 0 || limit <= 0) return [];
+
+  const seenSources = new Set<string>();
+  const guaranteed: RetrievedChunk[] = [];
+  const rest: RetrievedChunk[] = [];
+
+  for (const chunk of chunks) {
+    if (!seenSources.has(chunk.sourceId)) {
+      seenSources.add(chunk.sourceId);
+      guaranteed.push(chunk);
+    } else {
+      rest.push(chunk);
+    }
+  }
+
+  const combined = [...guaranteed, ...rest];
+  return combined.slice(0, limit);
 }
 
 /** Fallback: if full-text search finds nothing, grab the first chunk of each source. */

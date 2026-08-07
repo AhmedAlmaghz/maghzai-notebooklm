@@ -12,27 +12,28 @@ interface QuizQuestion {
 
 function parseQuiz(content: string): QuizQuestion[] {
   const questions: QuizQuestion[] = [];
-  
-  // Parse quiz with ---QUIZ--- format
+
+  // Parse quiz with ---QUIZ--- format. Treat EOF as an implicit ---END---
+  // so a truncated final question block is still parsed.
   const quizMatches = content.split(/---QUIZ---/i).slice(1);
-  
+
   for (const quizContent of quizMatches) {
     const endIndex = quizContent.indexOf("---END---");
     const quizText = endIndex > -1 ? quizContent.slice(0, endIndex) : quizContent;
-    
+
     // Split by ## ❓ to get individual questions
     const questionBlocks = quizText.split(/## ❓/i).filter(Boolean);
-    
+
     for (const block of questionBlocks) {
       const lines = block.split("\n").filter((l) => l.trim());
       if (lines.length === 0) continue;
 
       const question = lines[0]?.trim() || "";
-      
-      // Extract options (أ), ب), ج), د))
+
+      // Extract options (أ), ب), ج), د)). Tolerant of leading bullets/dashes.
       const options: string[] = [];
-      const optionRegex = /^[أ-د]\)\s*(.+)$/;
-      
+      const optionRegex = /^[-•*\s]*[أ-د]\)\s*(.+)$/;
+
       for (const line of lines) {
         const match = line.match(optionRegex);
         if (match) {
@@ -82,8 +83,8 @@ function parseQuiz(content: string): QuizQuestion[] {
         currentOptions = [];
         currentCorrect = "";
         currentExplanation = "";
-      } else if (line.match(/^[أ-د]\)/)) {
-        currentOptions.push(line.replace(/^[أ-د]\)\s*/, "").trim());
+      } else if (line.match(/^[-•*\s]*[أ-د]\)/)) {
+        currentOptions.push(line.replace(/^[-•*\s]*[أ-د]\)\s*/, "").trim());
       } else if (line.includes("الإجابة الصحيحة")) {
         const match = line.match(/([أ-د])/);
         if (match) currentCorrect = match[1];

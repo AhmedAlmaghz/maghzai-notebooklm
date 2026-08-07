@@ -47,7 +47,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   await db.insert(messages).values({ notebookId, role: "user", content: question });
 
-  let chunks = await searchChunks(notebookId, question, 10, sourceIds);
+  let chunks = await searchChunks(notebookId, question, 16, sourceIds);
   if (chunks.length === 0) {
     chunks = await fallbackChunks(notebookId, 8, sourceIds);
   }

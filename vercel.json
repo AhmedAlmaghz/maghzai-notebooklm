@@ -2,16 +2,16 @@
   "framework": "nextjs",
   "functions": {
     "src/app/api/notebooks/[id]/sources/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 600
     },
     "src/app/api/notebooks/[id]/chat/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 600
     },
     "src/app/api/notebooks/[id]/studio/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 600
     },
     "src/app/api/notebooks/[id]/audio/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 600
     }
   },
   "headers": [

@@ -43,7 +43,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const artifactSources = filteredSources.map(({ title, content }) => ({ title, content }));
 
-  const { content, usedAI } = await generateStudioArtifact(kind, artifactSources);
+  let content: string;
+  let usedAI: boolean;
+  try {
+    const result = await generateStudioArtifact(kind, artifactSources);
+    content = result.content;
+    usedAI = result.usedAI;
+  } catch (err) {
+    // Structured kinds (mindmap/quiz/flashcards/presentation) throw a clear
+    // Arabic error when the upstream Gemini call fails. Surface it as a 502
+    // so the client can show the message instead of a corrupted artifact.
+    const message = err instanceof Error ? err.message : "تعذر توليد المحتوى — تحقق من اتصال Gemini أو أعد المحاولة";
+    console.error(`[Studio] ${kind} generation failed:`, err);
+    return Response.json({ error: message }, { status: 502 });
+  }
 
   const [note] = await db
     .insert(notes)

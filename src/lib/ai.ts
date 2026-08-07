@@ -5,7 +5,7 @@ import type { WebSearchResult } from "@/lib/web-search";
 
 // Gemini API configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
-// Default model matches .env.example (gemini-2.0-flash-lite is a real,
+// Default model matches .env.example (gemini-3.5-flash-lite is a real,
 // currently-valid model name on the free tier).
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
@@ -90,10 +90,21 @@ type GeminiContent = {
   parts: { text: string }[];
 };
 
+type CallGeminiOptions = {
+  /** Explicit output token budget. Defaults to 8192 when omitted. */
+  maxTokens?: number;
+  /** Sampling temperature. Defaults to 0.7. */
+  temperature?: number;
+  /** Gemini tools payload (e.g. google_search grounding). */
+  tools?: unknown[];
+  /** When true, request a strict JSON response via responseMimeType. */
+  json?: boolean;
+};
+
 async function callGemini(
   contents: GeminiContent[],
   systemInstruction?: string,
-  maxTokens?: number,
+  maxTokensOrOptions?: number | CallGeminiOptions,
   tools?: unknown[],
 ): Promise<string | null> {
   if (!GEMINI_API_KEY) {
@@ -101,19 +112,33 @@ async function callGemini(
     return null;
   }
 
-  try {
-    const body: Record<string, unknown> = {
-      contents,
-      generationConfig: {
-        temperature: 0.7,
-      },
-    };
+  // Backward-compatible options normalization: the third argument may be a
+  // plain maxTokens number (legacy) or a full options object.
+  const options: CallGeminiOptions =
+    typeof maxTokensOrOptions === "number"
+      ? { maxTokens: maxTokensOrOptions, tools }
+      : { ...(maxTokensOrOptions ?? {}) };
 
-    // Only constrain the output length when an explicit limit is requested.
-    // By default the model is allowed to produce its full (unlimited) output.
-    if (typeof maxTokens === "number" && maxTokens > 0) {
-      (body.generationConfig as Record<string, unknown>).maxOutputTokens = maxTokens;
+  const maxTokens =
+    typeof options.maxTokens === "number" && options.maxTokens > 0
+      ? options.maxTokens
+      : 8192;
+  const temperature = options.temperature ?? 0.7;
+  const effectiveTools = options.tools ?? tools;
+
+  const buildBody = (requestContents: GeminiContent[]): Record<string, unknown> => {
+    const generationConfig: Record<string, unknown> = {
+      temperature,
+      maxOutputTokens: maxTokens,
+    };
+    if (options.json) {
+      generationConfig.responseMimeType = "application/json";
     }
+
+    const body: Record<string, unknown> = {
+      contents: requestContents,
+      generationConfig,
+    };
 
     if (systemInstruction) {
       body.systemInstruction = {
@@ -121,24 +146,31 @@ async function callGemini(
       };
     }
 
-    if (tools && tools.length > 0) {
-      body.tools = tools;
+    if (effectiveTools && effectiveTools.length > 0) {
+      body.tools = effectiveTools;
     }
 
-    const url = `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    return body;
+  };
+
+  const url = `${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const doFetch = async (requestContents: GeminiContent[]): Promise<{ text: string; finishReason?: string } | null> => {
     console.log(`[Gemini] Calling model: ${GEMINI_MODEL}`);
 
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(buildBody(requestContents)),
+      signal: AbortSignal.timeout(60000),
     });
 
     const responseText = await res.text();
 
     if (!res.ok) {
-      console.error(`[Gemini] API error ${res.status}:`, responseText);
-      return null;
+      const err = new Error(`[Gemini] API error ${res.status}: ${responseText.slice(0, 500)}`);
+      (err as { status?: number }).status = res.status;
+      throw err;
     }
 
     const data = JSON.parse(responseText);
@@ -148,6 +180,9 @@ async function callGemini(
       return null;
     }
 
+    const finishReason: string | undefined = data.candidates?.[0]?.finishReason;
+    console.log(`[Gemini] finishReason: ${finishReason ?? "unknown"}`);
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
     if (!text) {
@@ -156,9 +191,35 @@ async function callGemini(
     }
 
     console.log(`[Gemini] Response received (${text.length} chars)`);
-    return text;
+    return { text, finishReason };
+  };
+
+  try {
+    const first = await withRetry(() => doFetch(contents), { maxRetries: 3 });
+    if (!first) return null;
+
+    let combined = first.text;
+
+    // One continuation pass when the model hit the output token cap.
+    if (first.finishReason === "MAX_TOKENS") {
+      console.warn("[Gemini] Response truncated (MAX_TOKENS); attempting one continuation pass");
+      const continuationPrompt =
+        `النص التالي توقف بسبب بلوغ الحد الأقصى للرموز. أكمل من حيث توقف بالضبط دون تكرار أي جزء مما سبق:\n\n${first.text}`;
+      const continuation = await withRetry(
+        () => doFetch([{ role: "user", parts: [{ text: continuationPrompt }] }]),
+        { maxRetries: 3 },
+      );
+      if (continuation) {
+        combined = first.text + continuation.text;
+        if (continuation.finishReason === "MAX_TOKENS") {
+          console.warn("[Gemini] Continuation still truncated (MAX_TOKENS); returning concatenated partial text");
+        }
+      }
+    }
+
+    return combined;
   } catch (err) {
-    console.error("[Gemini] API call error:", err);
+    console.error("[Gemini] API call failed after retries:", err);
     return null;
   }
 }
@@ -188,6 +249,11 @@ const EDUCATIONAL_SYSTEM_PROMPT = `أنت معلّم ومساعد بحثي مت�
 5. **استشهد بالمصادر** بصيغة [1] أو [2] عند ذكر معلومة من المقتطفات
 6. **أضف سياقاً تعليمياً** يساعد على الفهم العميق
 
+## تغطية المصادر:
+- استخدم وادمج جميع المصادر المقدمة [1]..[N] في إجابتك.
+- لا تهمل أي مصدر من المصادر المقدمة.
+- إذا كانت المعلومة مفقودة من جميع المصادر، صرّح بذلك صراحةً.
+
 ## تنسيق الإجابة:
 - استخدم Markdown بشكل فعّال (عناوين، نقاط، **تأكيد**، \`مصطلحات\`)
 - اجعل الإجابة شاملة ومفصّلة (3-5 فقرات على الأقل)
@@ -210,6 +276,11 @@ const EXPANDED_SYSTEM_PROMPT = `أنت معلّم ومساعد بحثي متمي
 4. **نظّم الإجابة** بعناوين فرعية ونقاط واضحة
 5. **استشهد بالمصادر** بصيغة [1] أو [2] عند ذكر معلومة من المقتطفات
 6. **أضف سياقاً تعليمياً** يساعد على الفهم العميق
+
+## تغطية المصادر:
+- استخدم وادمج جميع المصادر المقدمة [1]..[N] في إجابتك.
+- لا تهمل أي مصدر من المصادر المقدمة.
+- إذا كانت المعلومة مفقودة من جميع المصادر، صرّح بذلك صراحةً.
 
 ## الوضع الموسع (Expanded Mode):
 أنت تعمل في الوضع الموسع، لذا:
@@ -308,7 +379,7 @@ export async function answerQuestion(
       userPrompt = `المقتطفات المرجعية من مصادر المستخدم:\n\n${context}\n\n---\n\n${webContext ? `${webContext}\n\n---\n\n` : ""
         }سؤال المستخدم: ${question}\n\nقدّم إجابة تعليمية شاملة ومفصّلة تشرح المفاهيم بوضوح. استخدم المصادر كأساس، ووسّع من معرفتك أو من نتائج الويب عند الحاجة.`;
     } else {
-      userPrompt = `المقتطفات المرجعية من مصادر المستخدم:\n\n${context}\n\n---\n\nسؤال المستخدم: ${question}\n\nقدّم إجابة تعليمية شاملة ومفصّلة تشرح المفاهيم بوضوح. اعتمد فقط على المعلومات الموجودة في المصادر أعلاه ولا تضف معلومات من خارجها.`;
+      userPrompt = `المقتطفات المرجعية من مصادر المستخدم:\n\n${context}\n\n---\n\nسؤال المستخدم: ${question}\n\nقدّم إجابة تعليمية شاملة ومفصّلة تشرح المفاهيم بوضوح. اعتمد فقط على المعلومات الموجودة في المصادر أعلاه ولا تضف معلومات من خارجها. غطِّ جميع المصادر المقدمة ولا تهمل أي مصدر منها.`;
     }
 
     const result = await callGemini(
@@ -457,6 +528,7 @@ async function generateFollowUpSuggestions(
   const result = await callGemini(
     [{ role: "user", parts: [{ text: `السؤال: ${question}\n\nالإجابة: ${answer.slice(0, 1000)}` }] }],
     systemPrompt,
+    { maxTokens: 2048 },
   );
 
   if (result) {
@@ -517,10 +589,14 @@ export async function generateStudioArtifact(
   kind: StudioKind,
   sourcesText: { title: string; content: string }[],
 ): Promise<{ content: string; usedAI: boolean }> {
+  // Per-source budgeting: every source is always represented, with a fair
+  // share of the total context budget. This prevents the first source from
+  // monopolizing the prompt when many sources are present.
+  const STUDIO_TOTAL_BUDGET = 30000;
+  const perSource = Math.max(1500, Math.floor(STUDIO_TOTAL_BUDGET / Math.max(1, sourcesText.length)));
   const fullContext = sourcesText
-    .map((s) => `## ${s.title}\n${s.content}`)
-    .join("\n\n")
-    .slice(0, 30000);
+    .map((s) => `## ${s.title}\n${s.content.slice(0, perSource)}`)
+    .join("\n\n");
 
   if (isLLMAvailable()) {
     const instructions: Record<StudioKind, string> = {
@@ -584,7 +660,7 @@ mindmap
 
 استخدم نقاط قصيرة وواضحة في كل شريحة (3-5 نقاط كحد أقصى).`,
       quiz:
-        "أنشئ اختباراً تعليمياً شاملاً من 8-10 أسئلة متنوعة. استخدم هذا التنسيق بالضبط:\n\n---QUIZ---\n## ❓ السؤال 1\n- أ) الخيار الأول\n- ب) الخيار الثاني\n- ج) الخيار الثالث\n- د) الخيار الرابع\n\n**الإجابة الصحيحة:** [الحرف]\n**الشرح:** [شرح مفصل للسبب]\n---END---\n\nاجعل الأسئلة متنوعة بين:\n- أسئلة فهم وتذكر\n- أسئلة تطبيقية\n- أسئلة تحليلية\n- أسئلة تقييمية\n\nتأكد من أن الإجابات واضحة والشروحات تعزز الفهم.",
+        "أنشئ اختباراً تعليمياً شاملاً من 8-10 أسئلة متنوعة. استخدم هذا التنسيق بالضبط:\n\n---QUIZ---\n## ❓ السؤال 1\nأ) الخيار الأول\nب) الخيار الثاني\nج) الخيار الثالث\nد) الخيار الرابع\n\n**الإجابة الصحيحة:** [الحرف]\n**الشرح:** [شرح مفصل للسبب]\n---END---\n\nاجعل الأسئلة متنوعة بين:\n- أسئلة فهم وتذكر\n- أسئلة تطبيقية\n- أسئلة تحليلية\n- أسئلة تقييمية\n\nتأكد من أن الإجابات واضحة والشروحات تعزز الفهم.",
       glossary:
         "أنشئ مسرداً شاملاً للمصطلحات المهمة. استخدم هذا التنسيق:\n\n## 📖 المصطلح\n**التعريف:** [تعريف واضح ومبسط]\n**مثال:** [مثال عملي من الواقع]\n**العلاقة:** [كيف يرتبط بمفاهيم أخرى]\n\nاجمع 10-15 مصطلحاً أساسياً مرتبطاً بالموضوع. رتبها أبجدياً.",
       outline:
@@ -595,13 +671,26 @@ mindmap
         "أنشئ نقاط مناقشة متوازنة ومحايدة حول الموضوع. استخدم:\n\n## 💬 وجهة النظر المؤيدة\n### الحجة الأولى\n- **الدليل:** ...\n- **المثال:** ...\n- **التأثير:** ...\n\n### الحجة الثانية\n- **الدليل:** ...\n- **المثال:** ...\n\n## 🤔 وجهة النظر المعارضة\n### الحجة الأولى\n- **الدليل:** ...\n- **المثال:** ...\n\n### الحجة الثانية\n- **الدليل:** ...\n- **المثال:** ...\n\n## ⚖️ الخلاصة المتوازنة\n[تحليل موضوعي يوضح متى يُفضل كل وجهة نظر]",
     };
     const system =
-      "أنت معلّم متخصص في إنتاج مواد دراسية عالية الجودة. اجعل المحتوى سهل الفهم ومنظماً بشكل جميل باستخدام Markdown.";
+      "أنت معلّم متخصص في إنتاج مواد دراسية عالية الجودة. اجعل المحتوى سهل الفهم ومنظماً بشكل جميل باستخدام Markdown. يجب أن يغطي الناتج كل المصادر المقدمة (كل مصدر على الأقل مرة واحدة).";
+
+    // Structured kinds (mindmap/quiz/flashcards/presentation) need lower
+    // temperature for deterministic, well-formed output.
+    const STRUCTURED_KINDS: StudioKind[] = ["mindmap", "quiz", "flashcards", "presentation"];
+    const isStructured = STRUCTURED_KINDS.includes(kind);
+    const temperature = isStructured ? 0.4 : 0.7;
 
     const result = await callGemini(
       [{ role: "user", parts: [{ text: `${instructions[kind]}\n\nالمصادر:\n\n${fullContext}` }] }],
       system,
+      { maxTokens: 16384, temperature },
     );
     if (result) return { content: result, usedAI: true };
+
+    // For structured kinds, never silently fall back to the generic
+    // extractive list — surface a clear error so the UI can show it.
+    if (isStructured) {
+      throw new Error("تعذر توليد المحتوى — تحقق من اتصال Gemini أو أعد المحاولة");
+    }
   }
 
   // Local fallback
@@ -638,7 +727,12 @@ export async function suggestQuestions(
   sourcesText: { title: string; content: string }[],
 ): Promise<string[]> {
   if (sourcesText.length === 0) return [];
-  const fullContext = sourcesText.map((s) => `## ${s.title}\n${s.content}`).join("\n\n").slice(0, 15000);
+  // Per-source budgeting so every source is represented.
+  const SUGGEST_TOTAL_BUDGET = 15000;
+  const perSource = Math.max(1500, Math.floor(SUGGEST_TOTAL_BUDGET / sourcesText.length));
+  const fullContext = sourcesText
+    .map((s) => `## ${s.title}\n${s.content.slice(0, perSource)}`)
+    .join("\n\n");
 
   if (isLLMAvailable()) {
     const result = await callGemini(
@@ -649,6 +743,7 @@ export async function suggestQuestions(
         },
       ],
       "أنت معلم يقترح أسئلة تحفّز التفكير والفهم العميق.",
+      { maxTokens: 4096 },
     );
     if (result) {
       return result
@@ -675,7 +770,12 @@ export async function generateNotebookTitle(
   const fallbackTitle = sourcesText[0]?.title?.slice(0, 60) || "دفتر بحث جديد";
 
   if (isLLMAvailable() && sourcesText.length > 0) {
-    const fullContext = sourcesText.map((s) => `## ${s.title}\n${s.content}`).join("\n\n").slice(0, 8000);
+    // Per-source budgeting so every source is represented.
+    const TITLE_TOTAL_BUDGET = 8000;
+    const perSource = Math.max(500, Math.floor(TITLE_TOTAL_BUDGET / sourcesText.length));
+    const fullContext = sourcesText
+      .map((s) => `## ${s.title}\n${s.content.slice(0, perSource)}`)
+      .join("\n\n");
     const result = await callGemini(
       [
         {
@@ -684,6 +784,7 @@ export async function generateNotebookTitle(
         },
       ],
       undefined,
+      { maxTokens: 1024, json: true },
     );
     if (result) {
       try {

@@ -1,0 +1,181 @@
+npm notice run MaghzAI NotebookLM@v0.5.3 npx
+npm notice run eslint src/lib/ai.ts src/lib/search.ts src/app/api/notebooks/[id]/chat/route.ts src/app/api/notebooks/[id]/studio/route.ts src/components/quiz-viewer.tsx src/components/flashcards-viewer.tsx src/components/presentation-viewer.tsx src/components/mindmap-viewer.tsx
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx
+  82:9  error    Error: Cannot access variable before it is declared
+
+`handleNext` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx:82:9
+  80 |       } else if (e.key === "ArrowLeft") {
+  81 |         e.preventDefault();
+> 82 |         handleNext();
+     |         ^^^^^^^^^^ `handleNext` accessed before it is declared
+  83 |       } else if (e.key === "ArrowRight") {
+  84 |         e.preventDefault();
+  85 |         handlePrev();
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx:96:3
+   94 |   }, [activeIndices.length, currentCardIndex]);
+   95 |
+>  96 |   const handleNext = () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  97 |     setIsFlipped(false);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+>  98 |     setShowAnswer(false);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+>  99 |     setCurrentIndex((prev) => (prev + 1) % activeIndices.length);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 100 |   };
+      | ^^^^^ `handleNext` is declared here
+  101 |
+  102 |   const handlePrev = () => {
+  103 |     setIsFlipped(false);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/immutability
+  85:9  error    Error: Cannot access variable before it is declared
+
+`handlePrev` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx:85:9
+  83 |       } else if (e.key === "ArrowRight") {
+  84 |         e.preventDefault();
+> 85 |         handlePrev();
+     |         ^^^^^^^^^^ `handlePrev` accessed before it is declared
+  86 |       } else if (e.key === "1") {
+  87 |         markAsUnknown();
+  88 |       } else if (e.key === "2") {
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx:102:3
+  100 |   };
+  101 |
+> 102 |   const handlePrev = () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 103 |     setIsFlipped(false);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 104 |     setShowAnswer(false);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 105 |     setCurrentIndex((prev) => (prev - 1 + activeIndices.length) % activeIndices.length);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^
+> 106 |   };
+      | ^^^^^ `handlePrev` is declared here
+  107 |
+  108 |   const handleFlip = () => {
+  109 |     setIsFlipped(!isFlipped);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/immutability
+  87:9  error    Error: Cannot access variable before it is declared
+
+`markAsUnknown` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx:87:9
+  85 |         handlePrev();
+  86 |       } else if (e.key === "1") {
+> 87 |         markAsUnknown();
+     |         ^^^^^^^^^^^^^ `markAsUnknown` accessed before it is declared
+  88 |       } else if (e.key === "2") {
+  89 |         markAsKnown();
+  90 |       }
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx:143:3
+  141 |   };
+  142 |
+> 143 |   const markAsUnknown = () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 144 |     setUnknownCards((prev) => new Set([...prev, currentCardIndex]));
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 145 |     setKnownCards((prev) => {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 146 |       const next = new Set(prev);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 147 |       next.delete(currentCardIndex);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 148 |       return next;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 149 |     });
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 150 |     handleNext();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 151 |   };
+      | ^^^^^ `markAsUnknown` is declared here
+  152 |
+  153 |   if (cards.length === 0) {
+  154 |     return (                                         react-hooks/immutability
+  89:9  error    Error: Cannot access variable before it is declared
+
+`markAsKnown` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx:89:9
+  87 |         markAsUnknown();
+  88 |       } else if (e.key === "2") {
+> 89 |         markAsKnown();
+     |         ^^^^^^^^^^^ `markAsKnown` accessed before it is declared
+  90 |       }
+  91 |     }
+  92 |     window.addEventListener("keydown", handleKeyDown);
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\flashcards-viewer.tsx:133:3
+  131 |   };
+  132 |
+> 133 |   const markAsKnown = () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 134 |     setKnownCards((prev) => new Set([...prev, currentCardIndex]));
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 135 |     setUnknownCards((prev) => {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 136 |       const next = new Set(prev);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 137 |       next.delete(currentCardIndex);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 138 |       return next;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 139 |     });
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 140 |     handleNext();
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 141 |   };
+      | ^^^^^ `markAsKnown` is declared here
+  142 |
+  143 |   const markAsUnknown = () => {
+  144 |     setUnknownCards((prev) => new Set([...prev, currentCardIndex]));  react-hooks/immutability
+  94:6  warning  React Hook useEffect has missing dependencies: 'handleNext', 'handlePrev', 'markAsKnown', and 'markAsUnknown'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/exhaustive-deps
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\mindmap-viewer.tsx
+  190:9  error  Error: Calling setState from useMemo may trigger an infinite loop
+
+Each time the memo callback is evaluated it will change state. This can cause a memoization dependency to change, running the memo function again and causing an infinite loop. Instead of setting state in useMemo(), prefer deriving the value during render. (https://react.dev/reference/react/useState).
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\mindmap-viewer.tsx:190:9
+  188 |       const parsed = parseMindmap(content);
+  189 |       if (!parsed) {
+> 190 |         setError("لم يتم العثور على خريطة ذهنية صالحة في هذا النص.");
+      |         ^^^^^^^^ Found setState() within useMemo()
+  191 |         return null;
+  192 |       }
+  193 |       setError(null);  react-hooks/set-state-in-render
+  193:7  error  Error: Calling setState from useMemo may trigger an infinite loop
+
+Each time the memo callback is evaluated it will change state. This can cause a memoization dependency to change, running the memo function again and causing an infinite loop. Instead of setting state in useMemo(), prefer deriving the value during render. (https://react.dev/reference/react/useState).
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\mindmap-viewer.tsx:193:7
+  191 |         return null;
+  192 |       }
+> 193 |       setError(null);
+      |       ^^^^^^^^ Found setState() within useMemo()
+  194 |       return parsed;
+  195 |     } catch {
+  196 |       setError("حدث خطأ أثناء قراءة الخريطة الذهنية");                                                 react-hooks/set-state-in-render
+  196:7  error  Error: Calling setState from useMemo may trigger an infinite loop
+
+Each time the memo callback is evaluated it will change state. This can cause a memoization dependency to change, running the memo function again and causing an infinite loop. Instead of setting state in useMemo(), prefer deriving the value during render. (https://react.dev/reference/react/useState).
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\mindmap-viewer.tsx:196:7
+  194 |       return parsed;
+  195 |     } catch {
+> 196 |       setError("حدث خطأ أثناء قراءة الخريطة الذهنية");
+      |       ^^^^^^^^ Found setState() within useMemo()
+  197 |       return null;
+  198 |     }
+  199 |   }, [content]);                                                          react-hooks/set-state-in-render
+
+c:\Users\AbuEmad\Downloads\build-notebooklm-style-application-1\src\components\presentation-viewer.tsx
+  100:6  warning  React Hook useEffect has a missing dependency: 'handleNext'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+✖ 9 problems (7 errors, 2 warnings)
+

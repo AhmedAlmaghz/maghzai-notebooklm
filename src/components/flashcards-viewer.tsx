@@ -10,17 +10,18 @@ interface Flashcard {
 
 function parseFlashcards(content: string): Flashcard[] {
   const cards: Flashcard[] = [];
-  
-  // Parse cards with ---CARD--- format
+
+  // Parse cards with ---CARD--- format. Treat EOF as an implicit ---END---
+  // so the last card is retained even if the closing delimiter is missing.
   const cardMatches = content.split(/---CARD---/i).slice(1);
-  
+
   for (const cardContent of cardMatches) {
     const endIndex = cardContent.indexOf("---END---");
     const cardText = endIndex > -1 ? cardContent.slice(0, endIndex) : cardContent;
-    
+
     const questionMatch = cardText.match(/\*\*السؤال:\*\*\s*([\s\S]*?)(?=\*\*الجواب:\*\*|$)/i);
     const answerMatch = cardText.match(/\*\*الجواب:\*\*\s*([\s\S]*?)$/i);
-    
+
     if (questionMatch && answerMatch) {
       cards.push({
         question: questionMatch[1].trim(),

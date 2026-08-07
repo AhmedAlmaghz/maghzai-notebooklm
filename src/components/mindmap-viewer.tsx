@@ -32,8 +32,18 @@ interface MindNode {
  *         نقطة فرعية 1
  */
 function parseMindmap(content: string): MindNode | null {
-  const match = content.match(/```mermaid\n?([\s\S]*?)```/);
-  const code = (match ? match[1] : content).trim();
+  // Prefer a fully-fenced ```mermaid block. If the closing fence is missing
+  // (truncated output), salvage by taking everything after the opening fence
+  // as the mermaid source. Otherwise fall back to the raw content.
+  const fenced = content.match(/```mermaid\n?([\s\S]*?)```/);
+  let code: string;
+  if (fenced) {
+    code = fenced[1];
+  } else {
+    const openFence = content.match(/```mermaid\n?([\s\S]*)$/);
+    code = openFence ? openFence[1] : content;
+  }
+  code = code.trim();
 
   const lines = code
     .split("\n")
@@ -125,8 +135,8 @@ function TreeNode({
           type="button"
           onClick={() => hasChildren && onToggle(node.id)}
           className={`group relative flex items-center gap-2 rounded-2xl bg-gradient-to-r ${gradient} px-4 py-2.5 text-right text-sm font-bold text-white shadow-md transition ${hasChildren
-              ? "cursor-pointer hover:scale-[1.03] hover:shadow-lg"
-              : "cursor-default"
+            ? "cursor-pointer hover:scale-[1.03] hover:shadow-lg"
+            : "cursor-default"
             }`}
           title={hasChildren ? (isExpanded ? "طيّ التفرعات" : "إظهار التفرعات") : node.label}
         >

@@ -12,20 +12,21 @@ interface Slide {
 
 function parseSlides(content: string): Slide[] {
   const slides: Slide[] = [];
-  
-  // Parse slides with ---SLIDE--- format
+
+  // Parse slides with ---SLIDE--- format. Treat EOF as an implicit ---END---
+  // so the last slide block is retained even if the closing delimiter is missing.
   const slideMatches = content.split(/---SLIDE---/i).slice(1);
-  
+
   for (const slideContent of slideMatches) {
     const endIndex = slideContent.indexOf("---END---");
     const slideText = endIndex > -1 ? slideContent.slice(0, endIndex) : slideContent;
-    
+
     const lines = slideText.trim().split("\n");
     let title = "";
     let contentLines: string[] = [];
     let notes = "";
     let inNotes = false;
-    
+
     for (const line of lines) {
       if (line.startsWith("## ") || line.startsWith("# ")) {
         title = line.replace(/^#+ /, "").trim();
@@ -38,7 +39,7 @@ function parseSlides(content: string): Slide[] {
         contentLines.push(line);
       }
     }
-    
+
     if (title || contentLines.length > 0) {
       slides.push({
         title: title || `شريحة ${slides.length + 1}`,
@@ -134,11 +135,10 @@ export default function PresentationViewer({ content }: { content: string }) {
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`group relative aspect-video overflow-hidden rounded-2xl border-2 p-4 text-right transition ${
-                index === currentIndex
+              className={`group relative aspect-video overflow-hidden rounded-2xl border-2 p-4 text-right transition ${index === currentIndex
                   ? "border-indigo-600 bg-indigo-50/80 dark:border-indigo-500 dark:bg-indigo-950/60"
                   : "border-slate-200 bg-white hover:border-indigo-400 dark:border-slate-800 dark:bg-slate-900"
-              }`}
+                }`}
             >
               <span className="absolute left-2.5 top-2.5 rounded-lg bg-slate-900/80 px-2 py-0.5 font-mono text-[10px] font-bold text-white">
                 {index + 1}
@@ -159,21 +159,19 @@ export default function PresentationViewer({ content }: { content: string }) {
     <div className={`flex flex-col ${isFullscreen ? "h-screen bg-slate-950 p-8" : ""}`}>
       {/* Slide Card Container */}
       <div
-        className={`flex-1 flex flex-col justify-between overflow-y-auto ${
-          isFullscreen
+        className={`flex-1 flex flex-col justify-between overflow-y-auto ${isFullscreen
             ? "rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 p-10 text-white shadow-2xl"
             : "rounded-3xl border-2 border-slate-200 bg-gradient-to-br from-white via-slate-50 to-indigo-50/30 p-8 shadow-xl dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/30"
-        }`}
+          }`}
       >
         <div>
           {/* Header Badge */}
           <div className="mb-6 flex items-center justify-between">
             <span
-              className={`rounded-full px-3.5 py-1 text-xs font-bold ${
-                isFullscreen
+              className={`rounded-full px-3.5 py-1 text-xs font-bold ${isFullscreen
                   ? "bg-white/20 text-white"
                   : "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-              }`}
+                }`}
             >
               شريحة {currentIndex + 1} من {slides.length}
             </span>
@@ -181,9 +179,8 @@ export default function PresentationViewer({ content }: { content: string }) {
 
           {/* Title */}
           <h2
-            className={`mb-6 font-black tracking-tight ${
-              isFullscreen ? "text-4xl text-white" : "text-2xl text-slate-900 dark:text-white"
-            }`}
+            className={`mb-6 font-black tracking-tight ${isFullscreen ? "text-4xl text-white" : "text-2xl text-slate-900 dark:text-white"
+              }`}
           >
             {currentSlide?.title}
           </h2>
@@ -197,11 +194,10 @@ export default function PresentationViewer({ content }: { content: string }) {
         {/* Presenter Notes */}
         {showNotes && currentSlide?.notes && (
           <div
-            className={`mt-6 rounded-2xl p-4 text-xs ${
-              isFullscreen
+            className={`mt-6 rounded-2xl p-4 text-xs ${isFullscreen
                 ? "border border-white/20 bg-white/10 text-white/90"
                 : "border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
-            }`}
+              }`}
           >
             <p className="font-bold mb-1">📝 ملاحظات المحاضر:</p>
             <p className="leading-relaxed">{currentSlide.notes}</p>
@@ -221,11 +217,10 @@ export default function PresentationViewer({ content }: { content: string }) {
           </button>
           <button
             onClick={() => setShowNotes(!showNotes)}
-            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-              showNotes
+            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${showNotes
                 ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-            }`}
+              }`}
           >
             📝 ملاحظات المحاضر
           </button>
@@ -247,11 +242,10 @@ export default function PresentationViewer({ content }: { content: string }) {
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`h-2 rounded-full transition-all ${
-                  index === currentIndex
+                className={`h-2 rounded-full transition-all ${index === currentIndex
                     ? "w-6 bg-indigo-600 dark:bg-indigo-400"
                     : "w-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400"
-                }`}
+                  }`}
               />
             ))}
           </div>
